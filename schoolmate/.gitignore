@@ -35,3 +35,12 @@ out/
 
 ### VS Code ###
 .vscode/
+=======
+### Spring Boot environment-specific properties ###
+/src/main/resources/application-local.properties
+/src/main/resources/application-dev.properties
+/src/main/resources/application-prod.properties
+
+### .DS_Store ###
+.DS_Store
+

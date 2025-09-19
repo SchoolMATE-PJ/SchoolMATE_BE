@@ -22,4 +22,9 @@ public interface StudentRepository  extends JpaRepository<Student, Long> {
 
     // 특정 권한을 가진 학생
     List<Student> findByRole(Role role);
+
+    // 회원 탈퇴 여부 검색
+    List<Student> findByIsDeleted(Boolean isDeleted);
+
+
 }

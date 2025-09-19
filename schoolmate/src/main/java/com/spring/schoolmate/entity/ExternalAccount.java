@@ -21,8 +21,8 @@ public class ExternalAccount {
     private Student student;
 
     @Column(name = "provider_name", nullable = false)
-    private String pName;
+    private String providerName;
 
     @Column(name = "provider_id", nullable = false, unique = true)
-    private String pId;
+    private String providerId;
 }

@@ -9,7 +9,6 @@ import lombok.Setter;
 @Entity
 @Table(name = "student_allergies")
 @Getter
-@Setter
 @NoArgsConstructor
 public class StudentAllergy {
 

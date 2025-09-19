@@ -4,6 +4,8 @@ import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
 
+import java.time.LocalDate;
+
 @Entity
 @Getter
 @Setter
@@ -33,6 +35,12 @@ public class Profile {
     @Column(nullable = false, unique = true)
     private String phone;
 
+    // 생년월일
+    @Column(nullable = false)
+    private LocalDate birthDay;
+
+    // 여기서 부터는 Null을 허용하였으나, 회원가입 시에는 필수로 받아야 함
+
     // 시도교육청코드
     @Column(name = "atpt_ofcdc_sc_code")
     private String scCode;
@@ -47,8 +55,14 @@ public class Profile {
     // 학년
     private short grade;
 
+    // 교육 수준
     private String level;
+
+    // 반 번호
     private short classNo;
+
+    // 프로필 이미지 URL
+    @Column(name = "profile_img_url")
     private String profileImgUrl;
 
 

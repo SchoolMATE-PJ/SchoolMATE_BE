@@ -10,9 +10,10 @@ import lombok.Setter;
 public class Profile {
 
     @Id
+    @Column(name = "student_id")
     private Long profileId;
 
-    @OneToOne
+    @OneToOne(fetch = FetchType.LAZY)
     @MapsId
     @JoinColumn(name = "student_id")
     private Student student;

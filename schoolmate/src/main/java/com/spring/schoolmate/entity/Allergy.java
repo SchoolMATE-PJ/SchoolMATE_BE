@@ -16,6 +16,7 @@ public class Allergy {
 
     // 알레르기 ID
     @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "allergy_id")
     private Integer allergyId;
 
     // 알레르기명

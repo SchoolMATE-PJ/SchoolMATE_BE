@@ -1,3 +1,4 @@
+HELP.md
 .gradle
 build/
 !gradle/wrapper/gradle-wrapper.jar
@@ -32,6 +33,9 @@ out/
 /nbdist/
 /.nb-gradle/
 
+### VS Code ###
+.vscode/
+=======
 ### Spring Boot environment-specific properties ###
 /src/main/resources/application-local.properties
 /src/main/resources/application-dev.properties
@@ -39,3 +43,4 @@ out/
 
 ### .DS_Store ###
 .DS_Store
+

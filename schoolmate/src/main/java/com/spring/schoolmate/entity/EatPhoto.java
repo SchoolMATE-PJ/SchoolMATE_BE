@@ -15,7 +15,6 @@ public class EatPhoto {
 
   @Id
   @GeneratedValue(strategy = GenerationType.IDENTITY)
-  @Column(name = "eatphoto_id")
   private Integer eatphotoId; // 급식 사진의 고유 식별자
 
   // 학생 엔티티와의 관계 설정
@@ -23,9 +22,9 @@ public class EatPhoto {
   @JoinColumn(name = "student_id", nullable = false)
   private Student student; // 급식 사진을 업로드한 학생
 
-  @Column(name = "eatimage_url", length = 255, nullable = false)
+  @Column(length = 255, nullable = false)
   private String eatimageUrl; // 급식 사진 파일 URL
 
-  @Column(name = "eatuploaded_at", nullable = false)
+  @Column(nullable = false)
   private Date eatuploadedAt; // 사진 업로드 시각
 }

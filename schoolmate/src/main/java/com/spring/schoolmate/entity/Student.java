@@ -56,4 +56,12 @@ public class Student {
     @Column(name = "point_balance", nullable = false)
     @Builder.Default // Lombok의 Builder 패턴에서 필드 초기값을 명시적으로 다루는 표준적인 방법
     private Integer pointBalance = 0; // 이 필드에 @Builder.Default 추가
+
+    // 회원 탈퇴 / 삭제 여부
+    @Column(name = "is_deleted")
+    @Builder.Default
+    private Boolean isDeleted = false;
+
+    @Column(name = "deleted_at")
+    private LocalDateTime deletedAt;
 }

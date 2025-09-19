@@ -14,8 +14,8 @@ public class EatphotoVisionScore {
 
   @Id
   @GeneratedValue(strategy = GenerationType.IDENTITY)
-  @Column(name = "id")
-  private Integer id; // 점수 기록의 고유 식별자
+  @Column(name = "eatphoto_vision_score_id")
+  private Integer eatphotoVisionScoreId; // 점수 기록의 고유 식별자
 
   // VisionLabel 엔티티와의 관계 설정
   @ManyToOne(fetch = FetchType.LAZY)

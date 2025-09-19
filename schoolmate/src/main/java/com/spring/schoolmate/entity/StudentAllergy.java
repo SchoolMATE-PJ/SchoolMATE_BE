@@ -21,12 +21,15 @@ public class StudentAllergy {
 
     // 학생 보유 알레르기 고유 아이디
     @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "sa_id")
     private Integer saId;
 
+    // student_id :: Student Entity PK
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "student_id", nullable = false)
     private Student student;
 
+    // allergy_id :: Allergy Entity PK
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "allergy_id", nullable = false)
     private Allergy allergy;

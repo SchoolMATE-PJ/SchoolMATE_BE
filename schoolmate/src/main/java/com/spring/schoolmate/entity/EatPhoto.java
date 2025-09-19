@@ -2,7 +2,8 @@ package com.spring.schoolmate.entity;
 
 import jakarta.persistence.*;
 import lombok.*;
-import java.util.Date;
+
+import java.time.LocalDateTime;
 
 @Builder
 @Setter
@@ -26,5 +27,5 @@ public class EatPhoto {
   private String eatimageUrl; // 급식 사진 파일 URL
 
   @Column(nullable = false)
-  private Date eatuploadedAt; // 사진 업로드 시각
+  private LocalDateTime eatuploadedAt; // 사진 업로드 시각
 }

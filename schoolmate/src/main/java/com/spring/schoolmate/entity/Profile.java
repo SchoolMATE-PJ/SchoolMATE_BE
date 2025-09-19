@@ -2,19 +2,24 @@ package com.spring.schoolmate.entity;
 
 import jakarta.persistence.*;
 import lombok.Getter;
+import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 import java.time.LocalDate;
 
 @Entity
+@Table(name = "profile")
 @Getter
 @Setter
+@NoArgsConstructor
 public class Profile {
 
+    // Profile student_id :: Student PK + FK
     @Id
     @Column(name = "student_id")
-    private Long profileId;
+    private Long studentId;
 
+    // Student와 Profile의 Entity는 1:1 관계
     @OneToOne(fetch = FetchType.LAZY)
     @MapsId
     @JoinColumn(name = "student_id")
@@ -32,11 +37,11 @@ public class Profile {
     private Gender gender;
 
     // 휴대폰 번호
-    @Column(nullable = false, unique = true)
+    @Column(name = "phone", nullable = false, unique = true)
     private String phone;
 
     // 생년월일
-    @Column(nullable = false)
+    @Column(name = "birthday", nullable = false)
     private LocalDate birthDay;
 
     // 여기서 부터는 Null을 허용하였으나, 회원가입 시에는 필수로 받아야 함
@@ -50,20 +55,22 @@ public class Profile {
     private String schoolCode;
 
     // 학교 이름
+    @Column(name = "school_name")
     private String schoolName;
 
     // 학년
+    @Column(name = "grade")
     private short grade;
 
     // 교육 수준
+    @Column(name = "level")
     private String level;
 
     // 반 번호
+    @Column(name = "class_no")
     private short classNo;
 
     // 프로필 이미지 URL
     @Column(name = "profile_img_url")
     private String profileImgUrl;
-
-
 }

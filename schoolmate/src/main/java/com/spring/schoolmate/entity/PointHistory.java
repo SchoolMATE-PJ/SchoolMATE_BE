@@ -2,6 +2,8 @@ package com.spring.schoolmate.entity;
 
 import jakarta.persistence.*;
 import lombok.*;
+import org.hibernate.annotations.CreationTimestamp;
+
 import java.sql.Timestamp;
 
 @Builder
@@ -13,32 +15,41 @@ import java.sql.Timestamp;
 @Table(name = "point_history")
 public class PointHistory {
 
-  @Id
-  @GeneratedValue(strategy = GenerationType.IDENTITY)
+    // Point History 고유 ID
+  @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
+  @Column(name = "ph_id")
   private Long phId;
 
   @ManyToOne(fetch = FetchType.LAZY)
   @JoinColumn(name = "student_id", nullable = false)
   private Student student;
 
-  @Column(length = 50, nullable = false)
-  private String transactionType;
+  // 포인트 거래 종류
+  @Column(name = "transaction_type", length = 50, nullable = false)
+  private String tsType;
 
-  @Column(nullable = false)
+  // 변동된 포인트
+  @Column(name = "amount", nullable = false)
   private Integer amount;
 
-  @Column(nullable = false)
+  // 거래 이후 최종 잔액
+  @Column(name = "balance_after", nullable = false)
   private Integer balanceAfter;
 
-  @Column(length = 50, nullable = true)
-  private String referenceType;
+  // 참조하는 타입 종류
+  @Column(name = "ref_type", length = 50)
+  private String refType;
 
-  @Column(nullable = true)
-  private Long referenceId;
+  // 참조하는 데이터 고유 ID
+  @Column(name = "ref_id")
+  private Long refId;
 
-  @Column(nullable = false)
+  // 거래 발생 시각
+  @Column(name = "created_at", nullable = false)
+  @CreationTimestamp
   private Timestamp createdAt;
 
-  @Column(nullable = true)
+  // 포인트 만료 시간
+  @Column(name = "expires_at")
   private Timestamp expiresAt;
 }

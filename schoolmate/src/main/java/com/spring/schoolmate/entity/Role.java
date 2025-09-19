@@ -1,12 +1,16 @@
 package com.spring.schoolmate.entity;
 
 import jakarta.persistence.*;
+import lombok.AllArgsConstructor;
 import lombok.Getter;
+import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 @Entity
+@Table(name = "role")
 @Getter
 @Setter
+@NoArgsConstructor
 public class Role {
 
     // Role 고유 ID

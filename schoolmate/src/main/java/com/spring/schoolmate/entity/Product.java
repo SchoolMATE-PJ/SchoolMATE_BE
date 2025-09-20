@@ -17,7 +17,7 @@ public class Product {
   @GeneratedValue(strategy = GenerationType.IDENTITY)
   private Integer productId; // DB의 내부 식별자로 사용되는 고유 번호
 
-  @Column(length = 50, nullable = false, unique = true)
+  @Column(length = 5, nullable = false, unique = true)
   private String productCode; // 상품번호 (CO123, CS352 등)
 
   @Column(length = 100, nullable = false)

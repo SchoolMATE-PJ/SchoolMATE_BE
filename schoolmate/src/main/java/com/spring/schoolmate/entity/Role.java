@@ -18,7 +18,7 @@ public class Role {
     @Column(name = "role_id")
     private Integer roleId;
 
-    // 권한명ㄴ
+    // 권한명
     // Enumerated(EnumType.STRING) :: Enum 타입을 문자열 자체로 DB에 저장
     @Enumerated(EnumType.STRING)
     @Column(name = "role_name", nullable = false)

@@ -24,6 +24,7 @@ import org.springframework.transaction.annotation.Transactional;
 // Java 표준 라이브러리 임포트
 import java.time.LocalDateTime;
 import java.util.Collections;
+import java.util.List;
 import java.util.Optional;
 
 // 이 클래스가 Spring의 서비스 레이어 컴포넌트임을 명시
@@ -136,5 +137,22 @@ public class EatPhotoService {
         return "급식 사진이 아닙니다.";
       }
     }
+  }
+
+  /**
+   * 특정 학생이 업로드한 모든 급식 사진을 조회하는 메서드
+   * @return 해당 학생이 업로드한 EatPhoto 리스트
+   */
+  public List<EatPhoto> getPhotoByStudentId(Integer studentId) {
+    return eatPhotoRepository.findByStudent_StudentId(studentId);
+  }
+
+  /**
+   * 모든 학생이 업로드한 급식 사진을 조회하는 메서드
+   * 이 메서드는 N+1 문제를 방지하기 위해 `FETCH JOIN`을 사용
+   * @return 모든 학생(role이 'STUDENT')이 업로드한 EatPhoto 리스트
+   */
+  public  List<EatPhoto> getAllStudentPhotos() {
+    return eatPhotoRepository.findAllStudentPhotos();
   }
 }

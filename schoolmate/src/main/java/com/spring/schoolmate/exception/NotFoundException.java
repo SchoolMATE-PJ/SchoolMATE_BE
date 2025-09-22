@@ -3,8 +3,8 @@ package com.spring.schoolmate.exception;
 import lombok.Getter;
 
 @Getter
-public class DMLException extends RuntimeException {
-  public DMLException(String message) {
+public class NotFoundException extends RuntimeException {
+  public NotFoundException(String message) {
     super(message);
   }
 }

@@ -47,6 +47,8 @@ public class ProfileReq {
     @Schema(description = "교육 수준")
     private String level;
 
+    private String profileImgUrl;
+
     public Profile toProfile(ProfileReq profileReq) {
         return Profile.builder()
                 .student(Student.builder().studentId(profileReq.getStudentId()).build())
@@ -60,6 +62,7 @@ public class ProfileReq {
                 .grade(profileReq.getGrade())
                 .classNo(profileReq.getClassNo())
                 .level(profileReq.getLevel())
+                .profileImgUrl(profileReq.getProfileImgUrl())
                 .build();
     }
 

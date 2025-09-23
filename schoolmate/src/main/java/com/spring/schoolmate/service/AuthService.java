@@ -2,6 +2,8 @@ package com.spring.schoolmate.service;
 
 import com.spring.schoolmate.dto.auth.ExternalSignUpReq;
 import com.spring.schoolmate.dto.auth.ExternalSignUpRes;
+import com.spring.schoolmate.dto.external.ExternalAccountReq;
+import com.spring.schoolmate.jwt.JWTUtil;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import com.spring.schoolmate.dto.auth.SignUpReq;
@@ -32,32 +34,29 @@ public class AuthService {
     private final RoleRepository roleRepository;
     private final PasswordEncoder passwordEncoder;
     private final ExternalAccountRepository externalAccountRepository;
-
+    private final JWTUtil jwtUtil;
 
     /**
-     * 일반 회원가입 처리
+     * 일반 신규 회원가입
      * @param request SignUpReq (student, profile, allergyId)
      * @return SignUpRes
      */
     @Transactional
     public SignUpRes signUp(SignUpReq request) {
-        // 공통 회원가입 로직 호출
         Student newStudent = registerStudent(request.getStudent().getEmail(), request.getStudent().getPassword(), request.getStudent().getName());
         Profile newProfile = registerProfile(newStudent, request.getProfile());
         List<Allergy> allergies = registerAllergy(newStudent, request.getAllergyId());
 
-        // DTO로 변환하여 반환
         return SignUpRes.fromEntity(newStudent, newProfile, allergies);
     }
 
     /**
-     * 소셜 회원가입 처리
+     * 소셜 신규 회원가입
      * @param request ExternalSignUpReq (student, profile, allergyId, externalAccount)
      * @return ExternalSignUpRes
      */
     @Transactional
     public ExternalSignUpRes externalSignUp(ExternalSignUpReq request) {
-        // 공통 회원가입 로직 호출
         Student newStudent = registerStudent(request.getStudent().getEmail(), request.getStudent().getPassword(), request.getStudent().getName());
         Profile newProfile = registerProfile(newStudent, request.getProfile());
         List<Allergy> allergies = registerAllergy(newStudent, request.getAllergyId());
@@ -72,6 +71,24 @@ public class AuthService {
 
         // DTO로 변환하여 반환
         return ExternalSignUpRes.fromEntity(newStudent, newProfile, newExternalAccount, allergies);
+    }
+
+    /**
+     * 기존 소셜 회원의 로그인 처리
+     * LoginFilter가 처리할 수 없는 로그인 담당
+     * @return 생성된 JWT Access Token
+     */
+    @Transactional(readOnly = true)
+    public String socialLogin(ExternalAccountReq request) {
+        // provider 정보로 기존에 가입된 계정인지 확인
+        ExternalAccount externalAccount = externalAccountRepository
+                .findByProviderNameAndProviderId(request.getProviderName(), request.getProviderId())
+                .orElseThrow(() -> new IllegalArgumentException("가입되지 않은 소셜 계정입니다. 회원가입을 먼저 진행해주세요."));
+
+        Student student = externalAccount.getStudent();
+
+        // JWT 생성하여 반환
+        return jwtUtil.createJwt(student.getEmail(), student.getRole().getRoleName().toString());
     }
 
     @Operation(summary = "이메일 중복 확인", description = "회원가입 시 이메일 중복 여부를 확인합니다.")
@@ -137,8 +154,8 @@ public class AuthService {
                 .grade(profileReq.getGrade())
                 .classNo(profileReq.getClassNo())
                 .level(profileReq.getLevel())
+                .profileImgUrl(profileReq.getProfileImgUrl())
                 .build();
-
         return profileRepository.save(newProfile);
     }
 
@@ -153,7 +170,6 @@ public class AuthService {
                 .map(allergy -> new StudentAllergy(student, allergy))
                 .collect(Collectors.toList());
         studentAllergyRepository.saveAll(studentAllergies);
-
         return allergies;
     }
 }

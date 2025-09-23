@@ -40,6 +40,7 @@ public class ProfileRes {
                 .grade(profile.getGrade())
                 .level(profile.getLevel())
                 .classNo(profile.getClassNo())
+                .profileImgUrl(profile.getProfileImgUrl())
                 .build();
     }
 }

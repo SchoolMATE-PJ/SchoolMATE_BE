@@ -79,7 +79,7 @@ public class SecurityConfig {
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         CorsConfiguration config = new CorsConfiguration();
         config.setAllowCredentials(true);
-        config.addAllowedOrigin("http://localhost:5173"); // 리액트 앱의 출처
+        config.addAllowedOrigin("http://localhost:3000"); // 리액트 앱의 출처
         config.addAllowedHeader("*");
         config.addAllowedMethod("*");
 

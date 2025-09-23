@@ -9,6 +9,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.Random;
 
 @Service
 @RequiredArgsConstructor
@@ -23,6 +24,42 @@ public class ProductService {
   @Transactional
   public Product registerProduct(Product product) {
     // 비즈니스 로직 추가 가능 (예: 상품 코드 중복 확인 등)
+    String productName = product.getProductName();
+    String prefix = "";
+    String category = "";
+
+    // 상품명에 따라 상품 코드의 접두사와 카테고리 설정
+    if (productName.contains("카페") || productName.contains("라떼") || productName.contains("아메리카노")
+    || productName.contains("프라페")) {
+      prefix = "CO";
+      category = "커피";
+    } else if (productName.contains("CU") || productName.contains("세븐일레븐") || productName.contains("GS25")) {
+      prefix = "CS";
+      category = "편의점";
+    } else if (productName.contains("배달의 민족") || productName.contains("쿠팡이츠") || productName.contains("요기요")) {
+      prefix = "BM";
+      category = "배달음식";
+    } else if (productName.contains("CGV") || productName.contains("롯데시네마") || productName.contains("메가박스")) {
+      prefix = "MO";
+      category = "영화";
+    }
+
+    // 카테고리 설정(필요한 경우)
+    if (!category.isEmpty()) {
+      product.setProductCategory(category);
+    }
+
+    // 중복되지 않는 상품 코드 생섬 및 설정
+    if (!prefix.isEmpty()) {
+      String newProductCode;
+      Random random = new Random();
+      do {
+        int randomNumber = random.nextInt(900) + 100; // 100부터 999까지의 랜덤 숫자
+        newProductCode = prefix + randomNumber;
+      } while (productRepository.findByProductCode(newProductCode) != null);
+      product.setProductCode(newProductCode);
+    }
+
     return productRepository.save(product);
   }
 

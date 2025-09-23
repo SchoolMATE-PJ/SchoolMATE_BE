@@ -20,7 +20,7 @@ public class Product {
   @Column(length = 5, nullable = false, unique = true)
   private String productCode; // 상품번호 (CO123, CS352 등)
 
-  @Column(length = 100, nullable = false)
+  @Column(length = 10, nullable = false)
   private String productCategory; // 상품 카테고리
 
   @Column(length = 100, nullable = false)

@@ -1,15 +1,15 @@
 package com.spring.schoolmate.entity;
 
 import jakarta.persistence.*;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
+import lombok.*;
 
 @Entity
 @Getter
 @Setter
 @Table(name = "external_account")
 @NoArgsConstructor
+@AllArgsConstructor
+@Builder
 public class ExternalAccount {
 
     @Id @GeneratedValue(strategy = GenerationType.IDENTITY)

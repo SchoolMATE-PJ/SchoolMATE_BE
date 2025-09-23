@@ -11,6 +11,9 @@ import java.util.Optional;
 
 public interface StudentRepository  extends JpaRepository<Student, Long> {
 
+    // 이메일 중복 체크
+    boolean existsByEmail(String email);
+
     // ID로 특정 학생 검색
     Optional<Student> findByStudentId(Long studentId);
 

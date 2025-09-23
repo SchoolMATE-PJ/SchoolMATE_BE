@@ -7,6 +7,12 @@ import java.util.Optional;
 
 public interface ProfileRepository extends JpaRepository<Profile, Long> {
 
+    // 전화번호 중복 체크
+    boolean existsByPhone(String phone);
+
+    // 닉네임 중복 체크
+    boolean existsByNickname(String nickname);
+
     // Student Entity의 PK가 Profile Entity의 PK
     Optional<Profile> findByStudentId(Long studentId);
 

@@ -60,7 +60,7 @@ public class Profile {
 
     // 학년
     @Column(name = "grade")
-    private short grade;
+    private Integer grade;
 
     // 교육 수준
     @Column(name = "level")
@@ -68,7 +68,7 @@ public class Profile {
 
     // 반 번호
     @Column(name = "class_no")
-    private short classNo;
+    private Integer classNo;
 
     // 프로필 이미지 URL
     @Column(name = "profile_img_url")

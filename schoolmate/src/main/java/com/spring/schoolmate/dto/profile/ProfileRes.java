@@ -22,9 +22,9 @@ public class ProfileRes {
     private String scCode;
     private String schoolCode;
     private String schoolName;
-    private short grade;
+    private Integer grade;
     private String level;
-    private short classNo;
+    private Integer classNo;
     private String profileImgUrl;
 
     public static ProfileRes fromEntity(Profile profile) {

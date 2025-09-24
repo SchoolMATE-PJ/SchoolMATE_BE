@@ -39,6 +39,8 @@ dependencies {
   // Google Cloud Vision AI 추가
   implementation 'com.google.cloud:google-cloud-vision:3.45.0' // 최신 버전으로 업데이트 가능
   implementation 'com.google.protobuf:protobuf-java:3.25.1' // 최신 버전으로 업데이트 가능
+  // Google Cloud Translation AI 추가
+  implementation 'com.google.cloud:google-cloud-translate:2.40.0'
 
   compileOnly 'org.projectlombok:lombok'
   developmentOnly 'org.springframework.boot:spring-boot-devtools'

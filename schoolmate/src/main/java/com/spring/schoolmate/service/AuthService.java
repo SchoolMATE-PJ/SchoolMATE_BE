@@ -88,7 +88,7 @@ public class AuthService {
         Student student = externalAccount.getStudent();
 
         // JWT 생성하여 반환
-        return jwtUtil.createJwt(student.getEmail(), student.getRole().getRoleName().toString());
+        return jwtUtil.createJwt(student);
     }
 
     @Operation(summary = "이메일 중복 확인", description = "회원가입 시 이메일 중복 여부를 확인합니다.")

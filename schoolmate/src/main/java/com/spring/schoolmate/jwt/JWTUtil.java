@@ -16,18 +16,20 @@ import java.util.Date;
 @Slf4j
 public class JWTUtil {
 
-    private SecretKey secretKey;//Decode한 secret key를 담는 객체
-
+    private final SecretKey secretKey;//Decode한 secret key를 담는 객체
+    private final Long expirationTime;
     //application.properties에 있는 미리 Base64로 Encode된 Secret key를 가져온다
-    public JWTUtil(@Value("${spring.jwt.secret}")String secret) {
-        secretKey = new SecretKeySpec(secret.getBytes(StandardCharsets.UTF_8), Jwts.SIG.HS256.key().build().getAlgorithm());
+    public JWTUtil(@Value("${spring.jwt.secret}")String secret,
+                   @Value("${spring.jwt.expiration-time}")Long expirationTime) {
+        this.secretKey = new SecretKeySpec(secret.getBytes(StandardCharsets.UTF_8), Jwts.SIG.HS256.key().build().getAlgorithm());
+        this.expirationTime = expirationTime;
     }
 
     //검증 Id
-    public Long getId(String token) {
-        log.info("getId(String token) :: call");
-        Long rId = Jwts.parser().verifyWith(secretKey).build().parseSignedClaims(token).getPayload().get("id", Long.class);
-        log.info("getId(String token) id = {}", rId);
+    public Long getStudentId(String token) {
+        log.info("getStudentId(String token) :: call");
+        Long rId = Jwts.parser().verifyWith(secretKey).build().parseSignedClaims(token).getPayload().get("studentId", Long.class);
+        log.info("getStudentId(String token) id = {}", rId);
         return rId;
     }
 
@@ -37,6 +39,14 @@ public class JWTUtil {
         String rEmail = Jwts.parser().verifyWith(secretKey).build().parseSignedClaims(token).getPayload().get("email", String.class);
         log.info("getEmail(String token)  re = {}" ,rEmail);
         return rEmail;
+    }
+
+    //검증 StudentName
+    public String getStudentName(String token) {
+        log.info("getStudentName(String token)  call");
+        String rStudentName = Jwts.parser().verifyWith(secretKey).build().parseSignedClaims(token).getPayload().get("studentName", String.class);
+        log.info("getStudentName(String token)  rStudentName = {}" ,rStudentName);
+        return rStudentName;
     }
 
     //검증 Role
@@ -60,15 +70,15 @@ public class JWTUtil {
         }
     }
 
-    public String createJwt(Student student, String email, String role, Long expiredMs) {
+    public String createJwt(Student student) {
         log.info("createJwt  call");
         return Jwts.builder()
-                .claim("id", student.getStudentId()) //아이디
-                .claim("email", student.getEmail()) //멤버번호
-                .claim("username", student.getName()) //이름
-                .claim("role", role) //Role
+                .claim("studentId", student.getStudentId()) // PK
+                .claim("email", student.getEmail()) // 이메일 :: 로그인 시 입력할 아이디
+                .claim("studentName", student.getName()) // 이름
+                .claim("role", student.getRole().getRoleName().toString()) //Role
                 .issuedAt(new Date(System.currentTimeMillis())) //현재로그인된 시간
-                .expiration(new Date(System.currentTimeMillis() + expiredMs)) //만료시간
+                .expiration(new Date(System.currentTimeMillis() + expirationTime)) //만료시간
                 .signWith(secretKey)
                 .compact();
     }

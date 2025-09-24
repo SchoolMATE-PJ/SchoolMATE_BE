@@ -30,6 +30,7 @@ public class LoginFilter extends UsernamePasswordAuthenticationFilter {
     public LoginFilter(AuthenticationManager authenticationManager, JWTUtil jwtUtil) {
         super(authenticationManager); // 부모 클래스에 AuthenticationManager 전달
         this.jwtUtil = jwtUtil;
+        setFilterProcessesUrl("/api/auth/login");
     }
 
     // 로그인 성공 시 실행

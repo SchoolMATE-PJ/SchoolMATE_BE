@@ -18,7 +18,7 @@ public class CustomStudentDetailService implements UserDetailsService {
 
     @Override
     public UserDetails loadUserByUsername(String studentEmail) throws UsernameNotFoundException {
-        log.info("UserDetailsService loadUserByUsername() call....username {}", studentEmail);
+        log.info("UserDetailsService loadUserByUsername() call....studentEmail {}", studentEmail);
         Student findStudent = studentRepository.findByEmail(studentEmail)
                 .orElseThrow(() -> new UsernameNotFoundException("해당 이메일을 가진 사용자를 찾을 수 없습니다: " + studentEmail));
 

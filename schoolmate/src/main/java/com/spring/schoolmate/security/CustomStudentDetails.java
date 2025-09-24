@@ -4,10 +4,12 @@ import com.spring.schoolmate.entity.Student;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 
 
 @Slf4j
@@ -25,9 +27,8 @@ public class CustomStudentDetails implements UserDetails {
     public Collection<? extends GrantedAuthority> getAuthorities() {
        // 사용자 권한 반환
         log.info("getAuthorities() ==========>");
-        Collection<GrantedAuthority> collection = new ArrayList<>();
-        collection.add(() -> student.getRole().getRoleName().toString());
-        return collection;
+        String authority = student.getRole().getRoleName().toString();
+        return Collections.singletonList(new SimpleGrantedAuthority("ROLE_" + authority));
     }
 
     @Override
@@ -41,6 +42,5 @@ public class CustomStudentDetails implements UserDetails {
         log.info("getUsername() ===>");
         return student.getEmail();
     }
-
-
+    
 }

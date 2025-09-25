@@ -25,33 +25,36 @@ repositories {
 }
 
 dependencies {
-  implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
-  implementation 'org.springframework.boot:spring-boot-starter-security'
-  implementation 'org.springframework.boot:spring-boot-starter-web'
+    implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
+    implementation 'org.springframework.boot:spring-boot-starter-security'
+    implementation 'org.springframework.boot:spring-boot-starter-web'
+    // OAuth2
+    implementation 'org.springframework.boot:spring-boot-starter-oauth2-client'
 
-  // JWT
-  implementation 'com.google.code.gson:gson:2.10.1'
-  implementation 'io.jsonwebtoken:jjwt-api:0.12.3'
+    // JWT
+    implementation 'com.google.code.gson:gson:2.10.1'
+    implementation 'io.jsonwebtoken:jjwt-api:0.12.3'
 
-  // Swagger 추가
-  implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:2.7.0'
+    // Swagger 추가
+    implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:2.7.0'
 
-  // Google Cloud Vision AI 추가
-  implementation 'com.google.cloud:google-cloud-vision:3.45.0' // 최신 버전으로 업데이트 가능
-  implementation 'com.google.protobuf:protobuf-java:3.25.1' // 최신 버전으로 업데이트 가능
-  // Google Cloud Translation AI 추가
-  implementation 'com.google.cloud:google-cloud-translate:2.40.0'
+    // Google Cloud Vision AI 추가
+    implementation 'com.google.cloud:google-cloud-vision:3.45.0' // 최신 버전으로 업데이트 가능
+    implementation 'com.google.protobuf:protobuf-java:3.25.1' // 최신 버전으로 업데이트 가능
+    // Google Cloud Translation AI 추가
+    implementation 'com.google.cloud:google-cloud-translate:2.40.0'
+    implementation 'org.springframework.boot:spring-boot-starter-actuator'
 
-  compileOnly 'org.projectlombok:lombok'
-  developmentOnly 'org.springframework.boot:spring-boot-devtools'
-  runtimeOnly 'com.h2database:h2'
-  runtimeOnly 'com.mysql:mysql-connector-j'
-  runtimeOnly 'io.jsonwebtoken:jjwt-impl:0.12.3'
-  runtimeOnly 'io.jsonwebtoken:jjwt-jackson:0.12.3'
-  annotationProcessor 'org.projectlombok:lombok'
-  testImplementation 'org.springframework.boot:spring-boot-starter-test'
-  testImplementation 'org.springframework.security:spring-security-test'
-  testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+    compileOnly 'org.projectlombok:lombok'
+    developmentOnly 'org.springframework.boot:spring-boot-devtools'
+    runtimeOnly 'com.h2database:h2'
+    runtimeOnly 'com.mysql:mysql-connector-j'
+    runtimeOnly 'io.jsonwebtoken:jjwt-impl:0.12.3'
+    runtimeOnly 'io.jsonwebtoken:jjwt-jackson:0.12.3'
+    annotationProcessor 'org.projectlombok:lombok'
+    testImplementation 'org.springframework.boot:spring-boot-starter-test'
+    testImplementation 'org.springframework.security:spring-security-test'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 
 
 }

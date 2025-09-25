@@ -3,6 +3,9 @@ package com.spring.schoolmate.config;
 import com.spring.schoolmate.jwt.JWTFilter;
 import com.spring.schoolmate.jwt.JWTUtil;
 import com.spring.schoolmate.jwt.LoginFilter;
+import com.spring.schoolmate.jwt.OAuth2SuccessHandler;
+import com.spring.schoolmate.repository.StudentRepository;
+import com.spring.schoolmate.service.CustomOAuth2UserService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.annotation.Bean;
@@ -29,6 +32,9 @@ public class SecurityConfig {
     //AuthenticationManager 가 인자로 받을 AuthenticationConfiguraion 객체 생성자 주입
     private final AuthenticationConfiguration authenticationConfiguration;
     private final JWTUtil jwtUtil;
+    private final CustomOAuth2UserService customOAuth2UserService; // 주입
+    private final OAuth2SuccessHandler oAuth2SuccessHandler; // 주입
+    private final StudentRepository studentRepository; // 주입 추가
 
     //AuthenticationManager Bean 등록
     /*
@@ -75,17 +81,25 @@ public class SecurityConfig {
         // 6. 세션 관리 설정: 세션을 사용하지 않고, 모든 요청을 상태 없이(stateless) 처리하도록 설정
         http.sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS));
 
-        // 7. 우리가 만든 JWTFilter를 UsernamePasswordAuthenticationFilter 앞에 배치합니다.
-        // 모든 요청은 JWTFilter를 먼저 거쳐 토큰을 검증받습니다.
-        http.addFilterBefore(new JWTFilter(jwtUtil), UsernamePasswordAuthenticationFilter.class);
+        // 7. OAuth2 로그인 설정
+        http.oauth2Login(oauth2 -> oauth2
+                // 사용자 정보를 가져온 후 처리할 서비스를 등록
+                .userInfoEndpoint(userInfo -> userInfo
+                        .userService(customOAuth2UserService)
+                )
+                // 로그인 성공(신규/기존) 후의 로직을 처리할 핸들러를 등록
+                .successHandler(oAuth2SuccessHandler)
+        );
 
-        // 8. 우리가 만든 LoginFilter를 기본 UsernamePasswordAuthenticationFilter 자리에 등록(교체)합니다.
+        // 8. WTFilter를 UsernamePasswordAuthenticationFilter 앞에 배치
+        // 모든 요청은 JWTFilter를 먼저 거쳐 토큰을 검증받습니다.
+        http.addFilterBefore(new JWTFilter(jwtUtil, studentRepository), LoginFilter.class); // studentRepository 전달
+
+        // 9. oginFilter를 기본 UsernamePasswordAuthenticationFilter 자리에 등록(교체)
         // 이렇게 하면 JWTFilter가 자연스럽게 LoginFilter보다 앞에 위치하게 됩니다.
         LoginFilter loginFilter = new LoginFilter(authenticationManager(authenticationConfiguration), jwtUtil);
+        loginFilter.setFilterProcessesUrl("/api/auth/login"); // 일반 로그인 처리 URL 지정
         http.addFilterAt(loginFilter, UsernamePasswordAuthenticationFilter.class);
-
-
-
         return http.build();
     }
 

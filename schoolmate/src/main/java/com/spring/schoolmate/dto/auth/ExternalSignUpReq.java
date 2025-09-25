@@ -17,4 +17,6 @@ public class ExternalSignUpReq {
     private ProfileReq profile;
     private List<Integer> allergyId;
     private ExternalAccountReq externalAccount;
+    // 임시 토큰 필드
+    private String tempToken;
 }

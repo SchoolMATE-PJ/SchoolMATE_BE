@@ -1,8 +1,10 @@
 package com.spring.schoolmate.service;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.spring.schoolmate.dto.auth.ExternalSignUpReq;
 import com.spring.schoolmate.dto.auth.ExternalSignUpRes;
 import com.spring.schoolmate.dto.external.ExternalAccountReq;
+import com.spring.schoolmate.dto.student.StudentReq;
 import com.spring.schoolmate.jwt.JWTUtil;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -19,6 +21,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 @Service
@@ -27,149 +31,70 @@ import java.util.stream.Collectors;
 @Tag(name = "Auth", description = "인증 관련 API")
 public class AuthService {
 
-    private final StudentRepository studentRepository;
-    private final ProfileRepository profileRepository;
-    private final AllergyRepository allergyRepository;
-    private final StudentAllergyRepository studentAllergyRepository;
-    private final RoleRepository roleRepository;
-    private final PasswordEncoder passwordEncoder;
+    // Repository
     private final ExternalAccountRepository externalAccountRepository;
+
+    // Service
     private final JWTUtil jwtUtil;
+    private final StudentService studentService; // 주입
+    private final ProfileService profileService;
+    private final AllergyService allergyService;
 
     /**
-     * 일반 신규 회원가입
-     * @param request SignUpReq (student, profile, allergyId)
-     * @return SignUpRes
+     * 일반 회원가입을 처리하는 메소드
+     * 이메일, 닉네임, 전화번호 중복을 모두 검증
      */
     @Transactional
     public SignUpRes signUp(SignUpReq request) {
-        Student newStudent = registerStudent(request.getStudent().getEmail(), request.getStudent().getPassword(), request.getStudent().getName());
-        Profile newProfile = registerProfile(newStudent, request.getProfile());
-        List<Allergy> allergies = registerAllergy(newStudent, request.getAllergyId());
+        // 1. 프로필 정보 중복 검사 (닉네임, 전화번호)
+        profileService.duplicateCheck(request.getProfile());
 
-        return SignUpRes.fromEntity(newStudent, newProfile, allergies);
+        // 2. 학생 정보 저장 (StudentService에 위임)
+        //    -> createStudent 내부에서 이메일 중복 검사도 함께 처리
+        Student newStudent = studentService.createStudent(request.getStudent());
+
+        // 3. 프로필 정보 저장
+        Profile newProfile = profileService.registerProfile(newStudent, request.getProfile());
+
+        // 4. 알레르기 정보 저장
+        List<Allergy> allergies = allergyService.registerStudentAllergies(newStudent, request.getAllergyId());
+
+        String token = jwtUtil.createJwt(newStudent);
+
+        return SignUpRes.fromEntity(newStudent, newProfile, allergies, token);
     }
 
-    /**
-     * 소셜 신규 회원가입
-     * @param request ExternalSignUpReq (student, profile, allergyId, externalAccount)
-     * @return ExternalSignUpRes
-     */
     @Transactional
-    public ExternalSignUpRes externalSignUp(ExternalSignUpReq request) {
-        Student newStudent = registerStudent(request.getStudent().getEmail(), request.getStudent().getPassword(), request.getStudent().getName());
-        Profile newProfile = registerProfile(newStudent, request.getProfile());
-        List<Allergy> allergies = registerAllergy(newStudent, request.getAllergyId());
+    public ExternalSignUpRes externalSignUp(ExternalSignUpReq request) throws JsonProcessingException {
+        // 1. 임시 토큰에서 소셜 정보 추출
+        Map<String, Object> oauthAttributes = jwtUtil.getOAuth2AttributesFromTempToken(request.getTempToken());
+        Map<String, Object> kakaoAccount = (Map<String, Object>) oauthAttributes.get("kakao_account");
+        String email = kakaoAccount.get("email").toString();
 
-        // 소셜 계정 정보 저장
+        // 2. 프로필 정보 중복 검사
+        profileService.duplicateCheck(request.getProfile());
+
+        // 3. 학생 정보 저장 (StudentService에 위임)
+        Student newStudent = studentService.createSocialStudent(email, request.getStudent());
+
+        // 4. 프로필 정보 저장
+        Profile newProfile = profileService.registerProfile(newStudent, request.getProfile());
+
+        // 5. 알레르기 정보 저장
+        List<Allergy> allergies = allergyService.registerStudentAllergies(newStudent, request.getAllergyId());
+
+        // 6. 외부 계정 정보(ExternalAccount) 추가 저장
+        String providerId = oauthAttributes.get("id").toString();
         ExternalAccount newExternalAccount = ExternalAccount.builder()
                 .student(newStudent)
                 .providerName(request.getExternalAccount().getProviderName())
-                .providerId(request.getExternalAccount().getProviderId())
+                .providerId(providerId)
                 .build();
         externalAccountRepository.save(newExternalAccount);
 
-        // DTO로 변환하여 반환
-        return ExternalSignUpRes.fromEntity(newStudent, newProfile, newExternalAccount, allergies);
-    }
+        String token = jwtUtil.createJwt(newStudent); // 로그인용 JWT 생성
 
-    /**
-     * 기존 소셜 회원의 로그인 처리
-     * LoginFilter가 처리할 수 없는 로그인 담당
-     * @return 생성된 JWT Access Token
-     */
-    @Transactional(readOnly = true)
-    public String socialLogin(ExternalAccountReq request) {
-        // provider 정보로 기존에 가입된 계정인지 확인
-        ExternalAccount externalAccount = externalAccountRepository
-                .findByProviderNameAndProviderId(request.getProviderName(), request.getProviderId())
-                .orElseThrow(() -> new IllegalArgumentException("가입되지 않은 소셜 계정입니다. 회원가입을 먼저 진행해주세요."));
-
-        Student student = externalAccount.getStudent();
-
-        // JWT 생성하여 반환
-        return jwtUtil.createJwt(student);
-    }
-
-    @Operation(summary = "이메일 중복 확인", description = "회원가입 시 이메일 중복 여부를 확인합니다.")
-    public void duplicateCheckByEmail(String email) {
-        if (studentRepository.existsByEmail(email)) {
-            throw new IllegalArgumentException("이미 사용중인 이메일입니다.");
-        }
-    }
-
-    @Operation(summary = "전화번호 중복 확인", description = "회원가입 시 전화번호 중복 여부를 확인합니다.")
-    public void duplicateCheckByPhone(String phone) {
-        if (profileRepository.existsByPhone(phone)) {
-            throw new IllegalArgumentException("이미 사용중인 전화번호입니다.");
-        }
-    }
-
-    // 일반 & 소셜 회원가입 공통
-    @Operation(summary = "학생 등록", description = "일반 및 소셜 회원가입 시 학생 정보를 등록합니다.")
-    private Student registerStudent(String email, String password, String name) {
-        // 이메일 중복 확인
-        if (studentRepository.existsByEmail(email)) {
-            throw new IllegalArgumentException("이미 사용 중인 이메일입니다.");
-        }
-
-        // 기본 권한(ROLE_STUDENT) 조회
-        Role studentRole = roleRepository.findByRoleName(Role.RoleType.STUDENT)
-                .orElseThrow(() -> new RuntimeException("학생 권한을 찾을 수 없습니다."));
-
-        // Student Entity 생성
-        Student newStudent = Student.builder()
-                .email(email)
-                .password(passwordEncoder.encode(password)) // 비밀번호 암호화
-                .name(name)
-                .role(studentRole)
-                .pointBalance(0) // 초기 포인트 0임
-                .build();
-
-        // 4. DB에 저장
-        return studentRepository.save(newStudent);
-    }
-
-    @Operation(summary = "프로필 등록", description = "학생의 상세 프로필 정보를 등록합니다.")
-    private Profile registerProfile(Student student, ProfileReq profileReq) {
-        // 전화번호 중복 확인
-        if (profileRepository.existsByPhone(profileReq.getPhone())) {
-            throw new IllegalArgumentException("이미 사용중인 전화번호입니다.");
-        }
-
-        // 닉네임 중복 확인
-        if (profileRepository.existsByNickname(profileReq.getNickname())) {
-            throw new IllegalArgumentException("이미 사용중인 닉네임입니다.");
-        }
-
-        Profile newProfile = Profile.builder()
-                .student(student)
-                .nickname(profileReq.getNickname())
-                .gender(profileReq.getGender())
-                .phone(profileReq.getPhone())
-                .birthDay(profileReq.getBirthDay())
-                .scCode(profileReq.getScCode())
-                .schoolCode(profileReq.getSchoolCode())
-                .schoolName(profileReq.getSchoolName())
-                .grade(profileReq.getGrade())
-                .classNo(profileReq.getClassNo())
-                .level(profileReq.getLevel())
-                .profileImgUrl(profileReq.getProfileImgUrl())
-                .build();
-        return profileRepository.save(newProfile);
-    }
-
-    @Operation(summary = "알레르기 등록", description = "학생의 알레르기 정보를 등록합니다.")
-    private List<Allergy> registerAllergy(Student student, List<Integer> allergyIds) {
-        if (allergyIds == null || allergyIds.isEmpty()) {
-            return Collections.emptyList();
-        }
-
-        List<Allergy> allergies = allergyRepository.findAllById(allergyIds);
-        List<StudentAllergy> studentAllergies = allergies.stream()
-                .map(allergy -> new StudentAllergy(student, allergy))
-                .collect(Collectors.toList());
-        studentAllergyRepository.saveAll(studentAllergies);
-        return allergies;
+        // fromEntity 메소드를 수정해서 token을 함께 반환하도록 변경
+        return ExternalSignUpRes.fromEntity(newStudent, newProfile, newExternalAccount, allergies, token);
     }
 }

@@ -23,15 +23,19 @@ public class ExternalSignUpRes {
     private ProfileRes profile;
     private ExternalAccountRes externalAccount;
     private List<AllergyRes> allergies;
+    private String token;
 
     public static ExternalSignUpRes fromEntity(Student student, Profile profile,
-                                               ExternalAccount externalAccount, List<Allergy>allergies) {
+                                               ExternalAccount externalAccount,
+                                               List<Allergy>allergies,
+                                               String token) {
         return ExternalSignUpRes.builder()
                 .student(StudentRes.fromEntity(student))
                 .profile(ProfileRes.fromEntity(profile))
                 .externalAccount(ExternalAccountRes.fromEntity(externalAccount))
                 .allergies(allergies == null ? List.of()
                         : allergies.stream().map(AllergyRes::fromEntity).toList())
+                .token(token)
                 .build();
     }
 

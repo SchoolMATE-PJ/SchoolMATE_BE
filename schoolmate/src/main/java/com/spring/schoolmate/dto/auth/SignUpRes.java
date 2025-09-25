@@ -21,13 +21,18 @@ public class SignUpRes {
     private StudentRes student;
     private ProfileRes profile;
     private List<AllergyRes> allergies;
+    private String token;
 
-    public static SignUpRes fromEntity(Student student, Profile profile, List<Allergy> allergies) {
+    public static SignUpRes fromEntity(Student student,
+                                       Profile profile,
+                                       List<Allergy> allergies,
+                                       String token) {
         return SignUpRes.builder()
                 .student(StudentRes.fromEntity(student))
                 .profile(ProfileRes.fromEntity(profile))
                 .allergies(allergies == null ? List.of()
                         : allergies.stream().map(AllergyRes::fromEntity).toList())
+                .token(token)
                 .build();
     }
 }

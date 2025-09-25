@@ -1,6 +1,9 @@
 package com.spring.schoolmate.jwt;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.spring.schoolmate.entity.Student;
+import com.spring.schoolmate.security.OAuth2CustomUser;
 import io.jsonwebtoken.Jwts;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -10,6 +13,7 @@ import javax.crypto.SecretKey;
 import javax.crypto.spec.SecretKeySpec;
 import java.nio.charset.StandardCharsets;
 import java.util.Date;
+import java.util.Map;
 
 // JWT 정보 검증 및 생성
 @Component
@@ -18,6 +22,8 @@ public class JWTUtil {
 
     private final SecretKey secretKey;//Decode한 secret key를 담는 객체
     private final Long expirationTime;
+    private final ObjectMapper objectMapper = new ObjectMapper(); // JSON 처리를 위해 추가
+
     //application.properties에 있는 미리 Base64로 Encode된 Secret key를 가져온다
     public JWTUtil(@Value("${spring.jwt.secret}")String secret,
                    @Value("${spring.jwt.expiration-time}")Long expirationTime) {
@@ -81,6 +87,39 @@ public class JWTUtil {
                 .expiration(new Date(System.currentTimeMillis() + expirationTime)) //만료시간
                 .signWith(secretKey)
                 .compact();
+    }
+
+    /**
+     * 신규 소셜 회원을 위한 '임시 회원가입용 토큰'을 생성합니다.
+     * 이 토큰은 유효시간이 짧으며, 카카오로부터 받은 원본 사용자 정보를 담고 있습니다.
+     *
+     * @param oAuth2User 카카오로부터 받은 사용자 정보 객체
+     * @return 임시 토큰 문자열
+     */
+    public String createTempSignupToken(OAuth2CustomUser oAuth2User) throws JsonProcessingException {
+        Map<String, Object> attributes = oAuth2User.getAttributes();
+        String attributesJson = objectMapper.writeValueAsString(attributes);
+
+        return Jwts.builder()
+                .claim("oauth_attributes", attributesJson) // 카카오에서 받은 정보 전체를 저장
+                .issuedAt(new Date(System.currentTimeMillis()))
+                .expiration(new Date(System.currentTimeMillis() + 10 * 60 * 1000L)) // 유효시간 10분
+                .signWith(secretKey)
+                .compact();
+    }
+
+    /**
+     * 임시 토큰을 검증하고, 그 안에 저장된 카카오 사용자 정보를 추출합니다.
+     *
+     * @param token 프론트엔드로부터 받은 임시 토큰
+     * @return 카카오 사용자 정보가 담긴 Map
+     */
+    public Map<String, Object> getOAuth2AttributesFromTempToken(String token) throws JsonProcessingException {
+        String attributesJson = Jwts.parser().verifyWith(secretKey).build()
+                .parseSignedClaims(token).getPayload()
+                .get("oauth_attributes", String.class);
+
+        return objectMapper.readValue(attributesJson, Map.class);
     }
 
 }

@@ -62,7 +62,7 @@ public class Profile {
     @Column(name = "grade")
     private Integer grade;
 
-    // 교육 수준
+    // 교육 수준 ex) 초등학교, 중학교, 고등학교
     @Column(name = "level")
     private String level;
 

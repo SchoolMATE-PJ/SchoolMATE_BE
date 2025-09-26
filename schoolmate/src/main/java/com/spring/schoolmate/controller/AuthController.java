@@ -42,18 +42,18 @@ public class AuthController {
     @PostMapping("/signUp/social")
     public ResponseEntity<?> externalSignUp(@RequestBody ExternalSignUpReq request) {
         try {
-            // ✅ try 블록 안에서 정상적인 로직을 시도합니다.
+            // try 블록 안에서 정상적인 로직을 시도합니다.
             ExternalSignUpRes response = authService.externalSignUp(request);
             return ResponseEntity.status(HttpStatus.CREATED).body(response);
 
         } catch (JsonProcessingException e) {
-            // ✅ catch 블록으로 JsonProcessingException 예외를 잡습니다.
+            // catch 블록으로 JsonProcessingException 예외를 잡습니다.
             //    이 예외는 주로 'tempToken'이 유효하지 않거나 깨졌을 때 발생합니다.
             log.error("소셜 회원가입 중 임시 토큰 처리 오류: {}", e.getMessage());
             return ResponseEntity.badRequest().body("유효하지 않은 요청입니다. (Invalid token)");
 
         } catch (Exception e) {
-            // ✅ 그 외 다른 예외가 발생했을 경우를 대비합니다.
+            // 그 외 다른 예외가 발생했을 경우를 대비합니다.
             log.error("소셜 회원가입 중 알 수 없는 오류 발생", e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("서버 내부 오류가 발생했습니다.");
         }

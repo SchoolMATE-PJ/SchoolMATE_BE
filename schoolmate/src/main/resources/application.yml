@@ -1,29 +1,26 @@
-# ---------------------------------------------------
+# ===================================================
 # Server & Application Configuration
-# 들여쓰기 중요함!!!!!
-# spring: 은 최상단
-# 나머지는 다 들여쓰기 되어있어야 오류 안납니다!!
-# ---------------------------------------------------
+# ===================================================
+server:
+  port: 9000
+  servlet:
+    encoding:
+      charset: UTF-8
+
 spring:
   application:
     name: SchoolMATE
 
-  server:
-    port: 9000
-    servlet:
-      encoding:
-        charset: UTF-8
-
-  # ---------------------------------------------------
+  # ===================================================
   # JWT (JSON Web Token) Configuration
-  # ---------------------------------------------------
+  # ===================================================
   jwt:
     secret: SahL5G83mGzrulJzffw-eD7RqphsXluJPBwxu0ncBFo
-    expiration-time: "#{60 * 60 * 1000}" # 1시간임 실제 배포때는 시간 10분으로 바꿔야 함
+    expiration-time: "#{60 * 60 * 1000}" # 1시간
 
-  # ---------------------------------------------------
+  # ===================================================
   # Spring Security OAuth2 Client Configuration
-  # ---------------------------------------------------
+  # ===================================================
   security:
     oauth2:
       client:
@@ -34,11 +31,10 @@ spring:
             client-secret: qdDFsmPwuIHLopWVdmMe775FnewZnGZM
             redirect-uri: http://localhost:9000/login/oauth2/code/kakao
             authorization-grant-type: authorization_code
-            client-authentication-method: client_secret_post
             scope:
               - profile_nickname
-              - profile_image
               - account_email
+            client-authentication-method: client_secret_post
         provider:
           kakao:
             authorization-uri: https://kauth.kakao.com/oauth/authorize
@@ -46,9 +42,9 @@ spring:
             user-info-uri: https://kapi.kakao.com/v2/user/me
             user-name-attribute: id
 
-  # ---------------------------------------------------
+  # ===================================================
   # Database (Datasource & JPA) Configuration
-  # ---------------------------------------------------
+  # ===================================================
   datasource:
     driver-class-name: com.mysql.cj.jdbc.Driver
     url: jdbc:mysql://localhost:3306/kosa?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC&characterEncoding=UTF-8
@@ -67,9 +63,9 @@ spring:
         format_sql: true
         enable_lazy_load_no_trans: true
 
-# ---------------------------------------------------
+# ===================================================
 # Springdoc OpenAPI (Swagger) Configuration
-# ---------------------------------------------------
+# ===================================================
 springdoc:
   api-docs:
     path: /api-docs
@@ -78,15 +74,18 @@ springdoc:
     display-request-duration: true
     tags-sorter: alpha
 
-# ---------------------------------------------------
-# Google Cloud Platform Configuration
-# ---------------------------------------------------
-google:
-  cloud:
-    credential:
-      file:
-        path: classpath:green-tract-4731b6-b3c9f9.json
-
-# GCP Config
-gcp:
-  project-id: green-tract-473106-b3
+# ===================================================
+# NEIS API Configuration
+# ===================================================
+neis:
+  api-key: b79f732043e047e5adaa8b6f57a8dba8
+  base-url: https://open.neis.go.kr/hub # 나이스 API 기본 URL
+  path: # 각 서비스별 상세 경로
+    school-info: /schoolInfo
+    meal-service: /mealServiceDietInfo
+    his-timetable: /hisTimetable
+    mis-timetable: /misTimetable
+    els-timetable: /elsTimetable
+    school-schedule: /SchoolSchedule
+    class-info: /classInfo
+    school-major: /schoolMajorinfo

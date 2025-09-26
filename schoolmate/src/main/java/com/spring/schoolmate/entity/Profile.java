@@ -57,6 +57,10 @@ public class Profile {
     // 학교 이름
     @Column(name = "school_name")
     private String schoolName;
+    
+    // 학과명
+    @Column(name = "major_name")
+    private String majorName;
 
     // 학년
     @Column(name = "grade")

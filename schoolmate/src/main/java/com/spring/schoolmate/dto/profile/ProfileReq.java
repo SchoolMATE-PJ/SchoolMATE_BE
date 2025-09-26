@@ -35,8 +35,11 @@ public class ProfileReq {
     @Schema(description = "학교 행정표준코드")
     private String schoolCode;
 
-    @Schema(description = "학교 이름")
+    @Schema(description = "학교명")
     private String schoolName;
+    
+    @Schema(description = "학과명")
+    private String majorName;
 
     @Schema(description = "학년")
     private Integer grade;
@@ -59,6 +62,7 @@ public class ProfileReq {
                 .scCode(profileReq.getScCode())
                 .schoolCode(profileReq.getSchoolCode())
                 .schoolName(profileReq.getSchoolName())
+                .majorName(profileReq.getMajorName())
                 .grade(profileReq.getGrade())
                 .classNo(profileReq.getClassNo())
                 .level(profileReq.getLevel())

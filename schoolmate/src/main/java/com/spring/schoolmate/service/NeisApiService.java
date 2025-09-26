@@ -1,0 +1,335 @@
+package com.spring.schoolmate.service;
+
+import com.spring.schoolmate.dto.neis.*;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Service;
+import org.springframework.web.reactive.function.client.WebClient;
+import org.springframework.web.util.UriComponentsBuilder;
+
+
+import java.time.LocalDate;
+import java.util.Collections;
+import java.util.List;
+import java.util.Objects;
+import java.util.function.Function;
+
+@Service
+@RequiredArgsConstructor
+@Slf4j
+public class NeisApiService {
+    private final WebClient webClient;
+
+    //  NEIS API KEY
+    @Value("${neis.api-key}")
+    private String apiKey;
+
+    // NEIS API URL
+    @Value("${neis.base-url}")
+    private String baseUrl;
+
+    // 학교 정보
+    @Value("${neis.path.school-info}")
+    private String schoolInfoPath;
+
+    // 급식 정보
+    @Value("${neis.path.meal-service}")
+    private String mealServicePath;
+
+    // 학사 일정
+    @Value("${neis.path.school-schedule}")
+    private String schoolSchedulePath;
+
+    // 고등학교 시간표
+    @Value("${neis.path.his-timetable}")
+    private String hisTimetablePath;
+
+    // 중학교 시간표
+    @Value("${neis.path.mis-timetable}")
+    private String misTimetablePath;
+
+    // 초등학교 시간표
+    @Value("${neis.path.els-timetable}")
+    private String elsTimetablePath;
+
+    // 학과명
+    @Value("${neis.path.school-major}")
+    private String schoolMajorPath;
+
+    // 학급정보
+    @Value("${neis.path.class-info}")
+    private String classInfoPath;
+
+
+    /**
+     * 학교 이름과 학교급으로 NEIS에서 학교 목록을 검색합니다.
+     *
+     * @param schoolName  검색할 학교 이름
+     * @param schoolLevel 학교급 ("초등학교", "중학교", "고등학교")
+     * @return 검색된 학교 정보 목록
+     */
+    public List<SchoolInfoRow> searchSchool(String schoolName, String schoolLevel) {
+        // 1. 학교급(초,중,고)을 NEIS API가 사용하는 코드값으로 변환합니다.
+        String schoolLevelCode = switch (schoolLevel) {
+            case "초등학교" -> "2";
+            case "중학교" -> "3";
+            case "고등학교" -> "4";
+            default -> throw new IllegalArgumentException("잘못된 학교급 정보입니다: " + schoolLevel);
+        };
+
+        // 2. WebClient를 사용하여 NEIS API에 보낼 최종 URL을 조립합니다.
+        String url = UriComponentsBuilder.fromUriString(baseUrl + schoolInfoPath)
+                .queryParam("KEY", apiKey)
+                .queryParam("Type", "json")
+                .queryParam("pIndex", 1)
+                .queryParam("pSize", 100)
+                .queryParam("SCHUL_NM", schoolName)
+                .queryParam("SCHUL_KND_SC_NM", schoolLevel) // SCHUL_KND_SC_NM 파라미터로 학교급 전달
+                .build() // 인코딩 옵션
+                .toUriString();
+        log.info("Requesting to NEIS API with URL: {}", url);
+
+        // 3. WebClient를 사용하여 GET 요청을 보내고, 응답을 NeisSchoolInfoResponse DTO로 받습니다.
+        SchoolInfoRes response = webClient.get()
+                .uri(url)
+                .retrieve()
+                .bodyToMono(SchoolInfoRes.class)
+                .block(); // 비동기 응답을 동기적으로 기다립니다.
+        log.info("Raw response from NEIS API: {}", response);
+
+        // 4. 응답 결과에서 실제 데이터(row)가 있는지 확인하고 반환합니다.
+        if (response != null && response.getSchoolInfo() != null && !response.getSchoolInfo().isEmpty()) {
+            List<SchoolInfoRow> rows = response.getSchoolInfo().get(1).getRow();
+            return Objects.requireNonNullElse(rows, Collections.emptyList());
+        }
+        return Collections.emptyList();
+    }
+
+    /**
+     * 시도교육청코드, 학교코드, 급식 일자로 NEIS에서 급식 식단을 검색합니다.
+     *
+     * @param educationOfficeCode 시도교육청코드 (ATPT_OFCDC_SC_CODE)
+     * @param schoolCode          학교 행정표준코드 (SD_SCHUL_CODE)
+     * @param mealDate            급식 일자 (YYYYMMDD)
+     * @return 검색된 급식 정보 목록
+     */
+    public List<MealInfoRow> getMealService(String educationOfficeCode, String schoolCode, String mealDate) {
+        // 1. WebClient를 사용하여 NEIS API에 보낼 최종 URL을 조립합니다.
+        String url = UriComponentsBuilder.fromUriString(baseUrl + mealServicePath)
+                .queryParam("KEY", apiKey)
+                .queryParam("Type", "json")
+                .queryParam("pIndex", 1)
+                .queryParam("pSize", 100)
+                .queryParam("ATPT_OFCDC_SC_CODE", educationOfficeCode) // 시도교육청 코드
+                .queryParam("SD_SCHUL_CODE", schoolCode) // 학교 코드
+                .queryParam("MLSV_YMD", mealDate) // 급식 일자 (YYYYMMDD)
+                .build(true) // 인코딩 옵션
+                .toUriString();
+
+        // 2. WebClient를 사용하여 GET 요청을 보내고, 응답을 MealServiceRes DTO로 받습니다.
+        MealInfoRes response = webClient.get()
+                .uri(url)
+                .retrieve()
+                .bodyToMono(MealInfoRes.class)
+                .block(); // 비동기 응답을 동기적으로 기다립니다.
+
+        if (response == null || response.getMealServiceDietInfo() == null || response.getMealServiceDietInfo().size() < 2) {
+            return Collections.emptyList();
+        }
+        List<MealInfoRow> rows = response.getMealServiceDietInfo().get(1).getRow();
+        return Objects.requireNonNullElse(rows, Collections.emptyList());
+    }
+
+    /**
+     * 시도교육청코드, 학교코드, 기간으로 NEIS에서 학사일정을 검색합니다.
+     *
+     * @param educationOfficeCode 시도교육청코드 (ATPT_OFCDC_SC_CODE)
+     * @param schoolCode          학교 행정표준코드 (SD_SCHUL_CODE)
+     * @param startDate           조회 시작 일자 (YYYYMMDD)
+     * @param endDate             조회 종료 일자 (YYYYMMDD)
+     * @return 검색된 학사일정 정보 목록
+     */
+    public List<SchoolScheduleRow> getSchoolSchedule(String educationOfficeCode,
+                                                     String schoolCode,
+                                                     String startDate,
+                                                     String endDate) {
+
+        // 1. WebClient를 사용하여 NEIS API에 보낼 최종 URL을 조립합니다.
+        String url = UriComponentsBuilder.fromUriString(baseUrl + schoolSchedulePath)
+                .queryParam("KEY", apiKey)
+                .queryParam("Type", "json")
+                .queryParam("pIndex", 1)
+                .queryParam("pSize", 100)
+                .queryParam("ATPT_OFCDC_SC_CODE", educationOfficeCode) // 시도교육청 코드
+                .queryParam("SD_SCHUL_CODE", schoolCode) // 학교 코드
+                .queryParam("AA_FROM_YMD", startDate) // 시작 일자 (YYYYMMDD)
+                .queryParam("AA_TO_YMD", endDate) // 종료 일자 (YYYYMMDD)
+                .build(true) // 인코딩 옵션
+                .toUriString();
+
+        // 2. WebClient를 사용하여 GET 요청을 보내고, 응답을 SchoolScheduleRes DTO로 받습니다.
+        SchoolScheduleRes response = webClient.get()
+                .uri(url)
+                .retrieve()
+                .bodyToMono(SchoolScheduleRes.class)
+                .block(); // 비동기 응답을 동기적으로 기다립니다.
+
+        // 3. 응답 결과에서 실제 데이터(row)가 있는지 확인하고 반환합니다.
+        if (response == null || response.getSchoolSchedule() == null || response.getSchoolSchedule().size() < 2) {
+            return Collections.emptyList();
+        }
+        List<SchoolScheduleRow> rows = response.getSchoolSchedule().get(1).getRow();
+        return Objects.requireNonNullElse(rows, Collections.emptyList());
+    }
+
+    // ✅ [신규] 학과 정보 조회 메소드
+    /**
+     * NEIS API로 특정 학교의 학과 정보를 조회합니다. (주로 특성화고/마이스터고용)
+     * @param educationOfficeCode 시도교육청코드
+     * @param schoolCode 학교 행정표준코드
+     * @return 검색된 학과 정보 목록
+     */
+    public List<SchoolMajorRow> getSchoolMajors(String educationOfficeCode, String schoolCode) {
+        String url = UriComponentsBuilder.fromUriString(baseUrl + schoolMajorPath)
+                .queryParam("KEY", apiKey)
+                .queryParam("Type", "json")
+                .queryParam("pIndex", 1)
+                .queryParam("pSize", 100)
+                .queryParam("ATPT_OFCDC_SC_CODE", educationOfficeCode)
+                .queryParam("SD_SCHUL_CODE", schoolCode)
+                .build(true)
+                .toUriString();
+
+        // SchoolMajorRes DTO를 사용
+        SchoolMajorRes response = webClient.get()
+                .uri(url)
+                .retrieve()
+                .bodyToMono(SchoolMajorRes.class)
+                .block();
+
+        if (response == null || response.getSchoolMajorInfo() == null || response.getSchoolMajorInfo().size() < 2) {
+            return Collections.emptyList();
+        }
+        List<SchoolMajorRow> rows = response.getSchoolMajorInfo().get(1).getRow();
+        return Objects.requireNonNullElse(rows, Collections.emptyList());
+    }
+
+    /**
+     * NEIS API로 특정 학교, 특정 학년의 반 목록 정보를 조회합니다.
+     * @param educationOfficeCode 시도교육청코드
+     * @param schoolCode 학교 행정표준코드
+     * @param grade 학년
+     * @return 검색된 반 정보 목록 (예: "1", "2", "3"...)
+     */
+    public List<ClassInfoRow> getClassInfo(String educationOfficeCode, String schoolCode, String grade) {
+        // API는 현재 학년도(AY)를 필수로 요구합니다.
+        String currentYear = String.valueOf(LocalDate.now().getYear());
+
+        String url = UriComponentsBuilder.fromUriString(baseUrl + classInfoPath)
+                .queryParam("KEY", apiKey)
+                .queryParam("Type", "json")
+                .queryParam("pIndex", 1)
+                .queryParam("pSize", 100)
+                .queryParam("ATPT_OFCDC_SC_CODE", educationOfficeCode)
+                .queryParam("SD_SCHUL_CODE", schoolCode)
+                .queryParam("AY", currentYear)
+                .queryParam("GRADE", grade)
+                .build(true)
+                .toUriString();
+
+        ClassInfoRes response = webClient.get()
+                .uri(url)
+                .retrieve()
+                .bodyToMono(ClassInfoRes.class)
+                .block();
+
+        if (response == null || response.getClassInfo() == null || response.getClassInfo().size() < 2) {
+            return Collections.emptyList();
+        }
+        List<ClassInfoRow> rows = response.getClassInfo().get(1).getRow();
+        return Objects.requireNonNullElse(rows, Collections.emptyList());
+    }
+
+    /**
+     * 학교급에 맞는 시간표 정보를 조회합니다.
+     */
+    public List<TimetableRow> getTimetable(String schoolLevel, String educationOfficeCode, String schoolCode, String timetableDate, String grade, String classNo, String majorName) {
+        return switch (schoolLevel) {
+            case "고등학교" ->
+                    fetchTimetable(hisTimetablePath, HisTimetableRes.class, HisTimetableRes::getHisTimetable, educationOfficeCode, schoolCode, timetableDate, grade, classNo, majorName);
+            case "중학교" ->
+                    fetchTimetable(misTimetablePath, MisTimetableRes.class, MisTimetableRes::getMisTimetable, educationOfficeCode, schoolCode, timetableDate, grade, classNo, null);
+            case "초등학교" ->
+                    fetchTimetable(elsTimetablePath, ElsTimetableRes.class, ElsTimetableRes::getElsTimetable, educationOfficeCode, schoolCode, timetableDate, grade, classNo, null);
+            default -> throw new IllegalArgumentException("잘못된 학교급 정보입니다: " + schoolLevel);
+        };
+    }
+
+
+    /**
+     * 고등학교 시간표 (hisTimetable) 정보를 조회합니다.
+     *
+     * @param educationOfficeCode 시도교육청코드 (ATPT_OFCDC_SC_CODE)
+     * @param schoolCode          학교 행정표준코드 (SD_SCHUL_CODE)
+     * @param timetableDate       조회 일자 (YYYYMMDD)
+     * @param grade               학년
+     * @param classNo             반 번호
+     * @return 검색된 시간표 정보 목록
+     */
+    private <T> List<TimetableRow> fetchTimetable(String path, Class<T> responseClass,
+                                                  Function<T, List<TimetableWrapper>> timetableExtractor,
+                                                  String educationOfficeCode,
+                                                  String schoolCode,
+                                                  String timetableDate,
+                                                  String grade,
+                                                  String classNo,
+                                                  String majorName) {
+        String url = createTimetableUrl(path, educationOfficeCode, schoolCode, timetableDate, grade, classNo, majorName);
+
+        T response = webClient.get()
+                .uri(url)
+                .retrieve()
+                .bodyToMono(responseClass)
+                .block();
+
+        if (response == null) {
+            return Collections.emptyList();
+        }
+
+        List<TimetableWrapper> timetableWrapperList = timetableExtractor.apply(response);
+        if (timetableWrapperList == null || timetableWrapperList.size() < 2) {
+            return Collections.emptyList();
+        }
+
+        List<TimetableRow> rows = timetableWrapperList.get(1).getRow();
+        return Objects.requireNonNullElse(rows, Collections.emptyList());
+    }
+
+    /**
+     * 시간표 조회를 위한 NEIS API URL을 생성하는 공통 로직입니다.
+     */
+    private String createTimetableUrl(String path,
+                                      String educationOfficeCode,
+                                      String schoolCode,
+                                      String timetableDate,
+                                      String grade,
+                                      String classNo,
+                                      String majorName) {
+        UriComponentsBuilder builder = UriComponentsBuilder.fromUriString(baseUrl + path)
+                .queryParam("KEY", apiKey)
+                .queryParam("Type", "json")
+                .queryParam("pIndex", 1)
+                .queryParam("pSize", 100)
+                .queryParam("ATPT_OFCDC_SC_CODE", educationOfficeCode) // 시도교육청 코드
+                .queryParam("SD_SCHUL_CODE", schoolCode) // 학교 코드
+                .queryParam("ALL_TI_YMD", timetableDate) // 조회 일자
+                .queryParam("GRADE", grade) // 학년
+                .queryParam("CLASS_NM", classNo); // 반
+
+        if (majorName != null && !majorName.isBlank()) {
+            builder.queryParam("DDDEP_NM", majorName); // 특성화고/일반고 학과명
+        }
+        return builder.build(true).toUriString();
+    }
+}

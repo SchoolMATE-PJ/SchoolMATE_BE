@@ -1,7 +1,8 @@
 package com.spring.schoolmate.security;
 
 import com.spring.schoolmate.entity.Admin;
-import com.spring.schoolmate.entity.Role;
+import lombok.Getter;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -9,35 +10,40 @@ import org.springframework.security.core.userdetails.UserDetails;
 import java.util.Collection;
 import java.util.Collections;
 
+@Slf4j
+@Getter
 public class CustomAdminDetails implements UserDetails {
 
   private final Admin admin;
 
   public CustomAdminDetails(Admin admin) {
     this.admin = admin;
-  }
-
-  public Admin getAdmin() {
-    return admin;
+    log.info("CustomAdminDetails===>{}", admin.getEmail());
   }
 
   @Override
   public Collection<? extends GrantedAuthority> getAuthorities() {
-    // Admin 엔티티의 RoleType을 기반으로 권한을 설정
-    return Collections.singletonList(new SimpleGrantedAuthority(
-      Role.RoleType.ADMIN.toString()));
+    // Admin 권한 반환
+    log.info("getAuthorities() [Admin] ==========>");
+    String authority = admin.getRole().toString();
+    // Spring Security의 권한은 "ROLE_" 접두사가 붙는 것이 관례입니다.
+    return Collections.singletonList(new SimpleGrantedAuthority("ROLE_" + authority));
   }
 
   @Override
   public String getPassword() {
+    log.info("getPassword() [Admin] ===>");
     return admin.getPassword();
   }
 
   @Override
   public String getUsername() {
-    return admin.getEmail(); // UserDetails에서는 이메일을 사용자 이름으로 사용
+    log.info("getUsername() [Admin] ===>");
+    // Admin 계정의 식별자로 Email을 사용
+    return admin.getEmail();
   }
 
+  // Admin은 만료되지 않는다고 가정하고 모두 true 반환 (필요에 따라 로직 수정 가능)
   @Override
   public boolean isAccountNonExpired() {
     return true;

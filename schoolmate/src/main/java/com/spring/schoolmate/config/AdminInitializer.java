@@ -3,51 +3,66 @@ package com.spring.schoolmate.config;
 import com.spring.schoolmate.entity.Admin;
 import com.spring.schoolmate.entity.Role;
 import com.spring.schoolmate.repository.AdminRepository;
-import com.spring.schoolmate.repository.RoleRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.boot.CommandLineRunner;
-import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.boot.ApplicationArguments;
+import org.springframework.boot.ApplicationRunner;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Component;
+
+import java.util.Optional;
 
 @Component
 @RequiredArgsConstructor
-public class AdminInitializer implements CommandLineRunner {
+@Slf4j
+public class AdminInitializer implements ApplicationRunner {
 
   private final AdminRepository adminRepository;
-  private final RoleRepository roleRepository;
-  private final PasswordEncoder passwordEncoder;
+  private final BCryptPasswordEncoder bCryptPasswordEncoder;
 
-  // application.properties에서 주입받는다.
   @Value("${app.admin.email}")
   private String adminEmail;
 
   @Value("${app.admin.password}")
   private String adminPassword;
 
-  private static final String DEFAULT_ADMIN_NAME = "최초관리자";
-
   @Override
-  public void run(String... args) throws Exception {
-    // 1. ADMIN 역할이 DB에 존재하는지 확인
-    if (roleRepository.findByRoleName(Role.RoleType.ADMIN).isEmpty()) {
-      Role adminRole = new Role();
-      adminRole.setRoleName(Role.RoleType.ADMIN);
-      roleRepository.save(adminRole);
-    }
+  public void run(ApplicationArguments args) throws Exception {
 
-    // 2. Admin 계정이 DB에 이미 존재하는지 확인
-    if (!adminRepository.existsByEmail(adminEmail)) {
-      // 3. Admin 계정 생성 (email: admin@school.com, password: admin)
+    Optional<Admin> existingAdminOpt = adminRepository.findByEmail(adminEmail);
+
+    if (existingAdminOpt.isEmpty()) {
+      // 1. 계정이 존재하지 않으면, 새로운 Admin 계정 생성 (최초 실행)
+      String encodedPassword = bCryptPasswordEncoder.encode(adminPassword);
+
       Admin admin = Admin.builder()
         .email(adminEmail)
-        .password(passwordEncoder.encode(adminPassword))
-        .name(DEFAULT_ADMIN_NAME)
+        .password(encodedPassword)
+        .role(Role.RoleType.ADMIN)
         .build();
+
       adminRepository.save(admin);
-      System.out.println("최초 Admin 계정 생성 완료: " + adminEmail);
+      log.info("⭐ Initial Admin account created: {}", adminEmail);
+
     } else {
-      System.out.println("Admin 계정 (" + adminEmail + ")이 이미 존재합니다.");
+      // 2. 계정이 존재함: 비밀번호 유효성 검사 및 필요시 업데이트
+      Admin existingAdmin = existingAdminOpt.get();
+
+      // BCryptPasswordEncoder.matches()를 사용하여 평문과 DB 해시 값을 비교
+      if (!bCryptPasswordEncoder.matches(adminPassword, existingAdmin.getPassword())) {
+
+        // 비밀번호가 일치하지 않으면 (DB에서 변경되었거나 손상된 경우), YAML 값으로 재설정
+        String newEncodedPassword = bCryptPasswordEncoder.encode(adminPassword);
+
+        existingAdmin.setPassword(newEncodedPassword);
+        adminRepository.save(existingAdmin);
+
+        log.warn("⚠️ Admin account password RESET to YAML value for {}. Login should now work with the configured password.", adminEmail);
+
+      } else {
+        log.info("Admin account already exists and password matches: {}", adminEmail);
+      }
     }
   }
 }

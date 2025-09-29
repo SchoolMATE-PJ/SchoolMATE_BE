@@ -1,8 +1,10 @@
 package com.spring.schoolmate.jwt;
 
-import com.spring.schoolmate.entity.Role;
+import com.spring.schoolmate.entity.Admin; // 🚨 [추가] Admin 엔티티 임포트
 import com.spring.schoolmate.entity.Student;
+import com.spring.schoolmate.repository.AdminRepository; // 🚨 [추가] AdminRepository 임포트
 import com.spring.schoolmate.repository.StudentRepository;
+import com.spring.schoolmate.security.CustomAdminDetails; // 🚨 [추가] CustomAdminDetails 임포트
 import com.spring.schoolmate.security.CustomStudentDetails;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -13,56 +15,85 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.userdetails.UserDetails; // UserDetails 타입 임포트
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
+import java.util.Optional;
 
 @Slf4j
-@RequiredArgsConstructor
 public class JWTFilter extends OncePerRequestFilter {
+
     private final JWTUtil jwtUtil;
     private final StudentRepository studentRepository;
+    private final AdminRepository adminRepository; // 🚨 [추가] AdminRepository 필드 추가
+
+    // 🚨 생성자 수정: StudentRepository 외에 AdminRepository도 주입받도록 함
+    public JWTFilter(JWTUtil jwtUtil, StudentRepository studentRepository, AdminRepository adminRepository) {
+        this.jwtUtil = jwtUtil;
+        this.studentRepository = studentRepository;
+        this.adminRepository = adminRepository;
+    }
 
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain) throws ServletException, IOException {
         String authorization = request.getHeader("Authorization");
 
-        //Authorization 헤더 검증
-        if (authorization == null || !authorization.startsWith("Bearer ")) { //인증후 들어온게 아니거나 검증된  토큰이 아니라면
-            System.out.println("token null");
-            filterChain.doFilter(request, response);//다음에 있는 필터로 가는 부분..갔다가 오면 아래에 있는 사후처리를 하는데..이걸 안하게 하려면 바로 return
-            //조건이 해당되면 메소드 종료 (필수)
+        // 1. Authorization 헤더 검증
+        if (authorization == null || !authorization.startsWith("Bearer ")) {
+            System.out.println("token null or malformed");
+            filterChain.doFilter(request, response);
             return;
         }
 
-        //토큰이 있다면..
-        System.out.println("authorization now");
-        //Bearer 부분 제거 후 순수 토큰만 획득
+        // 2. 순수 토큰 획득 및 소멸 시간 검증
         String token = authorization.split(" ")[1];
 
-        //토큰 소멸 시간 검증
         if (jwtUtil.isExpired(token)) {
             log.warn("token expired");
-            //브라우져로 리플래쉬토큰을 요청
             filterChain.doFilter(request, response);
-            //조건이 해당되면 메소드 종료 (필수)
             return;
         }
 
-        //살아있는 토큰이라면 토큰에서 username과 role 획득
-        Long studentId = jwtUtil.getStudentId(token);
+        // 3. 토큰에서 역할(Role), ID 획득 및 사용자 정보 조회
+        String role = jwtUtil.getRole(token);
+        Long id = jwtUtil.getId(token); // 🚨 JWTUtil의 공통 getId() 메서드 사용
 
-        // studentId로 DB에서 사용자 정보 조회
-        Student student = studentRepository.findById(studentId)
-                .orElseThrow(() -> new RuntimeException("User not found by token")); // 토큰에 있는 ID가 DB에 없으면 비정상
+        UserDetails userDetails = null;
 
-        //UserDetails에 회원 정보 객체 담기
-        CustomStudentDetails customStudentDetails = new CustomStudentDetails(student);
+        if ("STUDENT".equals(role) || "TEMP_USER".equals(role)) { // Student 또는 임시 사용자 처리
+            Optional<Student> studentOpt = studentRepository.findById(id);
+            if (studentOpt.isPresent()) {
+                userDetails = new CustomStudentDetails(studentOpt.get());
+            }
+        } else if ("ADMIN".equals(role)) { // 🚨 Admin 계정 처리
+            Optional<Admin> adminOpt = adminRepository.findById(id);
+            if (adminOpt.isPresent()) {
+                userDetails = new CustomAdminDetails(adminOpt.get());
+            }
+        }
 
-        //스프링 시큐리티 인증 토큰 생성
-        Authentication authToken =
-                new UsernamePasswordAuthenticationToken(customStudentDetails, null, customStudentDetails.getAuthorities());
+        // 4. 사용자 정보를 찾지 못한 경우 (비정상 토큰)
+        if (userDetails == null) {
+            log.error("User not found for role {} with ID {}", role, id);
+            // 인증 실패로 처리하거나, 다음 필터로 넘겨 권한 없음을 알릴 수 있습니다.
+            // 여기서는 다음 필터로 넘깁니다.
+            filterChain.doFilter(request, response);
+            return;
+        }
+
+
+        // 5. 스프링 시큐리티 인증 토큰 생성 및 등록
+        Authentication authToken = new UsernamePasswordAuthenticationToken(
+          userDetails,
+          null,
+          userDetails.getAuthorities()
+        );
         SecurityContextHolder.getContext().setAuthentication(authToken);
+
+        log.info("Authentication successful for user: {}", userDetails.getUsername());
+
+        // 6. 다음 필터로 진행
         filterChain.doFilter(request, response);
     }
 }

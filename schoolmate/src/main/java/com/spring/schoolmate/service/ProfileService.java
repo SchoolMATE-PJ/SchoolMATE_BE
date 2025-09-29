@@ -32,7 +32,7 @@ public class ProfileService {
                 .scCode(profileReq.getScCode())
                 .schoolCode(profileReq.getSchoolCode())
                 .schoolName(profileReq.getSchoolName())
-                .studentId(student.getStudentId())
+                .majorName(profileReq.getMajorName())
                 .grade(profileReq.getGrade())
                 .classNo(profileReq.getClassNo())
                 .level(profileReq.getLevel())

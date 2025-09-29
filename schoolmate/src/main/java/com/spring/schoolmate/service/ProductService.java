@@ -23,14 +23,13 @@ public class ProductService {
    */
   @Transactional
   public Product registerProduct(Product product) {
-    // 비즈니스 로직 추가 가능 (예: 상품 코드 중복 확인 등)
     String productName = product.getProductName();
     String prefix = "";
     String category = "";
 
-    // 상품명에 따라 상품 코드의 접두사와 카테고리 설정
+    // 1. 상품명에 따라 상품 코드의 접두사와 카테고리 설정
     if (productName.contains("카페") || productName.contains("라떼") || productName.contains("아메리카노")
-    || productName.contains("프라페")) {
+      || productName.contains("프라페")) {
       prefix = "CO";
       category = "커피";
     } else if (productName.contains("CU") || productName.contains("세븐일레븐") || productName.contains("GS25")) {
@@ -44,22 +43,26 @@ public class ProductService {
       category = "영화";
     }
 
-    // 카테고리 설정(필요한 경우)
-    if (!category.isEmpty()) {
-      product.setProductCategory(category);
+    // 🚨 [수정]: 키워드가 없을 경우 'ETC'로 설정하여 상품 코드 생성을 보장
+    if (prefix.isEmpty()) {
+      prefix = "ETC";
+      category = "기타";
     }
 
-    // 중복되지 않는 상품 코드 생섬 및 설정
-    if (!prefix.isEmpty()) {
-      String newProductCode;
-      Random random = new Random();
-      do {
-        int randomNumber = random.nextInt(900) + 100; // 100부터 999까지의 랜덤 숫자
-        newProductCode = prefix + randomNumber;
-      } while (productRepository.findByProductCode(newProductCode) != null);
-      product.setProductCode(newProductCode);
-    }
+    // 2. 카테고리 설정 (이제 category는 비어있지 않음)
+    product.setProductCategory(category);
 
+    // 3. 중복되지 않는 상품 코드 생성 및 설정 (prefix는 항상 존재함)
+    String newProductCode;
+    Random random = new Random();
+    do {
+      int randomNumber = random.nextInt(900) + 100; // 100부터 999까지의 랜덤 숫자
+      newProductCode = prefix + randomNumber;
+    } while (productRepository.findByProductCode(newProductCode) != null);
+
+    product.setProductCode(newProductCode);
+
+    // 이 시점에는 productCode와 productCategory가 항상 설정됩니다.
     return productRepository.save(product);
   }
 
@@ -72,9 +75,16 @@ public class ProductService {
     Optional<Product> optionalProduct = productRepository.findById(productId);
     if (optionalProduct.isPresent()) {
       Product existingProduct = optionalProduct.get();
+
+      // 🚨 [개선]: DTO를 통해 받은 필드만 업데이트하거나, 널 체크 로직을 추가하는 것이 더 안전함
+      // 현재는 엔티티를 통째로 받았다고 가정하고, 명시된 필드만 업데이트.
       existingProduct.setProductName(updatedProduct.getProductName());
       existingProduct.setProductPoints(updatedProduct.getProductPoints());
       existingProduct.setExpirationDate(updatedProduct.getExpirationDate());
+
+      // 만약 재고(stock)나 총수량(totalQuantity) 필드가 엔티티에 있다면 DTO와 맞춰서 추가.
+      // existingProduct.setStock(updatedProduct.getStock());
+      // existingProduct.setTotalQuantity(updatedProduct.getTotalQuantity());
 
       return productRepository.save(existingProduct);
     } else {

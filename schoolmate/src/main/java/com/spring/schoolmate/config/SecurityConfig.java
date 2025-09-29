@@ -4,6 +4,7 @@ import com.spring.schoolmate.jwt.JWTFilter;
 import com.spring.schoolmate.jwt.JWTUtil;
 import com.spring.schoolmate.jwt.LoginFilter;
 import com.spring.schoolmate.jwt.OAuth2SuccessHandler;
+import com.spring.schoolmate.repository.AdminRepository;
 import com.spring.schoolmate.repository.StudentRepository;
 import com.spring.schoolmate.service.CustomOAuth2UserService;
 import lombok.RequiredArgsConstructor;
@@ -29,20 +30,17 @@ import java.util.Arrays;
 @RequiredArgsConstructor
 @Slf4j
 public class SecurityConfig {
-    //AuthenticationManager 가 인자로 받을 AuthenticationConfiguraion 객체 생성자 주입
+
     private final AuthenticationConfiguration authenticationConfiguration;
     private final JWTUtil jwtUtil;
-    private final CustomOAuth2UserService customOAuth2UserService; // 주입
-    private final OAuth2SuccessHandler oAuth2SuccessHandler; // 주입
-    private final StudentRepository studentRepository; // 주입 추가
+    private final CustomOAuth2UserService customOAuth2UserService;
+    private final OAuth2SuccessHandler oAuth2SuccessHandler;
+    private final StudentRepository studentRepository;
+    private final AdminRepository adminRepository;
 
-    //AuthenticationManager Bean 등록
-    /*
-     * Spring Security가 주입되면 내부적으로 글로벌 영역에  AuthenticationManager 는 자동으로 주입된다
-     */
     @Bean
     public AuthenticationManager authenticationManager(AuthenticationConfiguration configuration)
-            throws Exception{
+      throws Exception{
         return configuration.getAuthenticationManager();
     }
 
@@ -52,25 +50,26 @@ public class SecurityConfig {
         return new BCryptPasswordEncoder();
     }
 
-    /**
-     * Spring Security의 메인 설정을 담당하는 SecurityFilterChain을 Bean으로 등록합니다.
-     */
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         log.info("SecurityFilterChain ===============>");
-        // 1. CORS 설정 (프론트엔드 서버와의 통신을 위함)
+
+        // LoginFilter 객체를 단 한 번만 생성
+        LoginFilter loginFilter = new LoginFilter(authenticationManager(authenticationConfiguration), jwtUtil);
+        // LoginFilter 생성자에서 setFilterProcessesUrl("/api/auth/login")가 호출된다면 이 줄은 생략 가능
+        // loginFilter.setFilterProcessesUrl("/api/auth/login");
+
+        // 1. CORS 설정
         http.cors(cors -> cors.configurationSource(corsConfigurationSource()));
 
-        // 2. CSRF 보호 기능 비활성화 (JWT 방식에서는 세션을 사용하지 않으므로 비활성화해도 안전합니다.)
+        // 2. CSRF 보호 기능 비활성화
         http.csrf(auth -> auth.disable());
 
-        // 3. Form 기반 로그인 방식 비활성화 (우리는 JSON 기반의 커스텀 필터를 사용합니다.)
+        // 3. FormLogin, HttpBasic 비활성화
         http.formLogin(auth -> auth.disable());
-
-        // 4. HTTP Basic 인증 방식 비활성화
         http.httpBasic(auth -> auth.disable());
 
-        // 5. URL별 접근 권한 설정
+        // 4. URL별 접근 권한 설정
         http.authorizeHttpRequests(auth -> auth
                 // "/api/auth/**" 경로의 모든 요청은 인증 없이 허용 (회원가입, 로그인 등)
                 .requestMatchers("/api/auth/**", "/swagger-ui/**", "/v3/api-docs/**", "/api/school/**", "/api/school-search/**").permitAll()
@@ -78,49 +77,48 @@ public class SecurityConfig {
                 // 그 외의 모든 요청은 반드시 인증을 거쳐야 함
                 .anyRequest().authenticated());
 
-        // 6. 세션 관리 설정: 세션을 사용하지 않고, 모든 요청을 상태 없이(stateless) 처리하도록 설정
+        // 5. 세션 관리 설정: 상태 없음(stateless)
         http.sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS));
 
-        // 7. OAuth2 로그인 설정
+        // 6. OAuth2 로그인 설정
         http.oauth2Login(oauth2 -> oauth2
-                // 사용자 정보를 가져온 후 처리할 서비스를 등록
-                .userInfoEndpoint(userInfo -> userInfo
-                        .userService(customOAuth2UserService)
-                )
-                // 로그인 성공(신규/기존) 후의 로직을 처리할 핸들러를 등록
-                .successHandler(oAuth2SuccessHandler)
+          .userInfoEndpoint(userInfo -> userInfo
+            .userService(customOAuth2UserService)
+          )
+          .successHandler(oAuth2SuccessHandler)
         );
 
-        // 8. WTFilter를 UsernamePasswordAuthenticationFilter 앞에 배치
-        // 모든 요청은 JWTFilter를 먼저 거쳐 토큰을 검증받습니다.
-        http.addFilterBefore(new JWTFilter(jwtUtil, studentRepository), LoginFilter.class); // studentRepository 전달
+        // 7. 필터 등록 순서 정리 (중복 제거)
 
-        // 9. oginFilter를 기본 UsernamePasswordAuthenticationFilter 자리에 등록(교체)
-        // 이렇게 하면 JWTFilter가 자연스럽게 LoginFilter보다 앞에 위치하게 됩니다.
-        LoginFilter loginFilter = new LoginFilter(authenticationManager(authenticationConfiguration), jwtUtil);
-        loginFilter.setFilterProcessesUrl("/api/auth/login"); // 일반 로그인 처리 URL 지정
+        // 🚨 LoginFilter를 기본 필터 자리에 등록
         http.addFilterAt(loginFilter, UsernamePasswordAuthenticationFilter.class);
+
+        // 🚨 JWTFilter를 LoginFilter보다 '앞에' 등록 (토큰 유효성 검사)
+        // JWTFilter는 AdminRepository를 주입받아야 함
+        http.addFilterBefore(
+          new JWTFilter(jwtUtil, studentRepository, adminRepository),
+          LoginFilter.class
+        );
+
         return http.build();
     }
 
 
     /**
-     * CORS(Cross-Origin Resource Sharing) 설정을 위한 Bean입니다.
-     * 다른 도메인(예: http://localhost:3000)의 프론트엔드 서버가 우리 API 서버에 요청할 수 있도록 허용합니다.
+     * CORS 설정을 위한 Bean입니다.
      */
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        configuration.setAllowedOrigins(Arrays.asList("http://localhost:3000")); // 허용할 출처
-        configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS")); // 허용할 HTTP 메소드
+        configuration.setAllowedOrigins(Arrays.asList("http://localhost:3000"));
+        configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"));
         configuration.setAllowCredentials(true);
-        configuration.setAllowedHeaders(Arrays.asList("*")); // 모든 헤더 허용
+        configuration.setAllowedHeaders(Arrays.asList("*"));
         configuration.setMaxAge(3600L);
-        // 클라이언트가 응답 헤더의 "Authorization"에 접근할 수 있도록 노출
         configuration.addExposedHeader("Authorization");
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
-        source.registerCorsConfiguration("/**", configuration); // 모든 경로에 대해 위 CORS 설정 적용
+        source.registerCorsConfiguration("/**", configuration);
         return source;
     }
 }

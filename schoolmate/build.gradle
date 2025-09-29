@@ -61,7 +61,3 @@ dependencies {
 
 
 }
-
-tasks.named('bootRun') {
-  jvmArgs = ['--sun-misc-unsafe-memory-access=allow']
-}

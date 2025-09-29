@@ -5,32 +5,26 @@ import lombok.*;
 
 @Entity
 @Getter
-@NoArgsConstructor(access = AccessLevel.PROTECTED)
+@Setter
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
 @Table(name = "admin")
 public class Admin {
 
   @Id
   @GeneratedValue(strategy = GenerationType.IDENTITY)
+  @Column(name = "admin_id")
   private Long adminId;
 
-  @Column(unique = true, nullable = false)
+  @Column(name = "email", nullable = false, unique = true, length = 100)
   private String email;
 
-  @Column(nullable = false)
-  private String password; // 암호화된 비밀번호
-
-  @Column(nullable = false)
-  private String name;
+  @Column(name = "password", nullable = false, length = 100)
+  private String password;
 
   @Enumerated(EnumType.STRING)
-  @Column(nullable = false)
-  private Role.RoleType role = Role.RoleType.ADMIN;
+  @Column(name = "role", nullable = false)
+  private Role.RoleType role; // Role Enum의 RoleType 사용
 
-  @Builder
-  public Admin(String email, String password, String name) {
-    this.email = email;
-    this.password = password;
-    this.name = name;
-    this.role = Role.RoleType.ADMIN;
-  }
 }

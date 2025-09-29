@@ -1,5 +1,6 @@
 package com.spring.schoolmate.jwt;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.gson.Gson;
 import com.spring.schoolmate.entity.Student;
 import com.spring.schoolmate.security.CustomStudentDetails;
@@ -26,6 +27,8 @@ public class LoginFilter extends UsernamePasswordAuthenticationFilter {
 
     private final JWTUtil jwtUtil;
     private static final Gson gson = new Gson();
+    private final ObjectMapper objectMapper = new ObjectMapper();
+
 
     public LoginFilter(AuthenticationManager authenticationManager, JWTUtil jwtUtil) {
         super(authenticationManager); // 부모 클래스에 AuthenticationManager 전달
@@ -66,12 +69,31 @@ public class LoginFilter extends UsernamePasswordAuthenticationFilter {
     protected void unsuccessfulAuthentication(HttpServletRequest request, HttpServletResponse response,
                                               AuthenticationException failed) throws IOException {
 
-        log.warn("로그인 실패: {}", failed.getMessage());
         Map<String, String> errorBody = Map.of("message", "로그인에 실패했습니다.");
 
         //로그인 실패시 401 응답 코드 반환
         response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
         response.setContentType("application/json;charset=UTF-8");
-        response.getWriter().print(gson.toJson(errorBody));
+    }
+
+    @Override
+    public Authentication attemptAuthentication(HttpServletRequest request, HttpServletResponse response) throws AuthenticationException {
+        try {
+            // 1. JSON 데이터를 DTO 대신 Map으로 변환합니다.
+            Map<String, String> credentials = objectMapper.readValue(request.getInputStream(), Map.class);
+
+            // 2. Map에서 email과 password를 직접 추출합니다.
+            String email = credentials.get("email");
+            String password = credentials.get("password");
+
+            // 3. Spring Security가 이해할 수 있는 형태로 변환합니다.
+            UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(email, password, null);
+
+            // 4. AuthenticationManager에 인증을 위임합니다.
+            return getAuthenticationManager().authenticate(authToken);
+        } catch (IOException e) {
+            log.error("로그인 시도 중 JSON 파싱 에러: {}", e.getMessage());
+            throw new RuntimeException("로그인 요청 처리 중 에러가 발생했습니다.", e);
+        }
     }
 }

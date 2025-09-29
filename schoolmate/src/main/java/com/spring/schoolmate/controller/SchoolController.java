@@ -24,11 +24,11 @@ public class SchoolController {
     @Operation(summary = "학교 검색", description = "학교명과 학교급으로 NEIS에서 학교 목록을 검색합니다.")
     @GetMapping
     public ResponseEntity<List<SchoolInfoRow>> searchSchool(
-            @Parameter(description = "검색할 학교 이름", required = true, example = "수택")
+            @Parameter(description = "검색할 학교 이름", required = true)
             @RequestParam String schoolName,
 
 
-            @Parameter(description = "학교급 (초등학교, 중학교, 고등학교)", required = true, example = "고등학교")
+            @Parameter(description = "학교급 (초등학교, 중학교, 고등학교)", required = true)
             @RequestParam String schoolLevel) {
 
         log.info(">>>>> SchoolController searchSchool called! schoolName={}, schoolLevel={}", schoolName, schoolLevel);
@@ -36,28 +36,28 @@ public class SchoolController {
         return ResponseEntity.ok(schoolList);
     }
 
-    // ✅ [신규] 학과 정보 조회 API
+    // 학과 정보 조회 API
     @Operation(summary = "학과 정보 조회", description = "특정 학교의 학과 목록을 조회합니다. (주로 특성화고/마이스터고용)")
     @GetMapping("/majors")
     public ResponseEntity<List<SchoolMajorRow>> getSchoolMajors(
-            @Parameter(description = "시도교육청코드", required = true, example = "J10")
+            @Parameter(description = "시도교육청코드", required = true)
             @RequestParam String educationOfficeCode,
 
-            @Parameter(description = "학교 행정표준코드", required = true, example = "J100002222")
+            @Parameter(description = "학교 행정표준코드", required = true)
             @RequestParam String schoolCode) {
 
         List<SchoolMajorRow> majorList = neisApiService.getSchoolMajors(educationOfficeCode, schoolCode);
         return ResponseEntity.ok(majorList);
     }
 
-    // ✅ [신규] 학급 정보 조회 API
+    // 학급 정보 조회 API
     @Operation(summary = "학년별 반 정보 조회", description = "특정 학교, 특정 학년의 반 목록을 조회합니다.")
     @GetMapping("/class-info")
     public ResponseEntity<List<ClassInfoRow>> getClassInfo(
-            @Parameter(description = "시도교육청코드", required = true, example = "J10")
+            @Parameter(description = "시도교육청코드", required = true)
             @RequestParam String educationOfficeCode,
 
-            @Parameter(description = "학교 행정표준코드", required = true, example = "J100002222")
+            @Parameter(description = "학교 행정표준코드", required = true)
             @RequestParam String schoolCode,
 
             @Parameter(description = "학년", required = true, example = "1")
@@ -67,14 +67,14 @@ public class SchoolController {
         return ResponseEntity.ok(classList);
     }
 
-    // ✅ [신규] 급식 정보 조회 API
+    // 급식 정보 조회 API
     @Operation(summary = "급식 정보 조회", description = "특정 학교, 특정 날짜의 급식 정보를 조회합니다.")
     @GetMapping("/meals")
     public ResponseEntity<List<MealInfoRow>> getMealInfo(
-            @Parameter(description = "시도교육청코드", required = true, example = "J10")
+            @Parameter(description = "시도교육청코드", required = true)
             @RequestParam String educationOfficeCode,
 
-            @Parameter(description = "학교 행정표준코드", required = true, example = "J100002222")
+            @Parameter(description = "학교 행정표준코드", required = true)
             @RequestParam String schoolCode,
 
             @Parameter(description = "조회할 날짜 (YYYYMMDD 형식)", required = true, example = "20250926")
@@ -84,14 +84,14 @@ public class SchoolController {
         return ResponseEntity.ok(mealList);
     }
 
-    // ✅ [신규] 학사일정 조회 API
+    // 학사일정 조회 API
     @Operation(summary = "학사일정 조회", description = "특정 학교의 기간 내 학사일정을 조회합니다.")
     @GetMapping("/schedules")
     public ResponseEntity<List<SchoolScheduleRow>> getSchoolSchedule(
-            @Parameter(description = "시도교육청코드", required = true, example = "J10")
+            @Parameter(description = "시도교육청코드", required = true)
             @RequestParam String educationOfficeCode,
 
-            @Parameter(description = "학교 행정표준코드", required = true, example = "J100002222")
+            @Parameter(description = "학교 행정표준코드", required = true)
             @RequestParam String schoolCode,
 
             @Parameter(description = "조회 시작일 (YYYYMMDD 형식)", required = true, example = "20250901")
@@ -108,13 +108,13 @@ public class SchoolController {
     @Operation(summary = "통합 시간표 조회", description = "학교급에 따라 초/중/고 시간표를 조회합니다.")
     @GetMapping("/timetables")
     public ResponseEntity<List<TimetableRow>> getTimetable(
-            @Parameter(description = "학교급 (초등학교, 중학교, 고등학교)", required = true, example = "고등학교")
+            @Parameter(description = "학교급 (초등학교, 중학교, 고등학교)", required = true)
             @RequestParam String schoolLevel,
 
-            @Parameter(description = "시도교육청코드", required = true, example = "J10")
+            @Parameter(description = "시도교육청코드", required = true)
             @RequestParam String educationOfficeCode,
 
-            @Parameter(description = "학교 행정표준코드", required = true, example = "J100002222")
+            @Parameter(description = "학교 행정표준코드", required = true)
             @RequestParam String schoolCode,
 
             @Parameter(description = "조회할 날짜 (YYYYMMDD 형식)", required = true, example = "20250926")
@@ -126,7 +126,7 @@ public class SchoolController {
             @Parameter(description = "반", required = true, example = "3")
             @RequestParam String classNo,
 
-            @Parameter(description = "학과명 (특성화고만 해당, 일반고는 생략 가능)", required = false, example = "컴퓨터소프트웨어과")
+            @Parameter(description = "학과명 (특성화고만 해당, 초,중학교에는 필요없음)", required = false)
             @RequestParam(required = false) String majorName) {
 
         List<TimetableRow> timetableList = neisApiService.getTimetable(schoolLevel, educationOfficeCode, schoolCode, date, grade, classNo, majorName);

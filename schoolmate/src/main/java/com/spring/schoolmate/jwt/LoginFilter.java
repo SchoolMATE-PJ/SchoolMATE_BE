@@ -1,6 +1,6 @@
 package com.spring.schoolmate.jwt;
 
-import com.fasterxml.jackson.databind.ObjectMapper; // 🚨 [추가] JSON 파싱용 임포트
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.gson.Gson;
 import com.spring.schoolmate.entity.Admin;
 import com.spring.schoolmate.entity.Student;
@@ -112,5 +112,26 @@ public class LoginFilter extends UsernamePasswordAuthenticationFilter {
         //로그인 실패시 401 응답 코드 반환
         response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
         response.setContentType("application/json;charset=UTF-8");
+    }
+
+    @Override
+    public Authentication attemptAuthentication(HttpServletRequest request, HttpServletResponse response) throws AuthenticationException {
+        try {
+            // 1. JSON 데이터를 DTO 대신 Map으로 변환합니다.
+            Map<String, String> credentials = objectMapper.readValue(request.getInputStream(), Map.class);
+
+            // 2. Map에서 email과 password를 직접 추출합니다.
+            String email = credentials.get("email");
+            String password = credentials.get("password");
+
+            // 3. Spring Security가 이해할 수 있는 형태로 변환합니다.
+            UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(email, password, null);
+
+            // 4. AuthenticationManager에 인증을 위임합니다.
+            return getAuthenticationManager().authenticate(authToken);
+        } catch (IOException e) {
+            log.error("로그인 시도 중 JSON 파싱 에러: {}", e.getMessage());
+            throw new RuntimeException("로그인 요청 처리 중 에러가 발생했습니다.", e);
+        }
     }
 }

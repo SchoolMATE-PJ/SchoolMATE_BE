@@ -4,11 +4,8 @@ import com.spring.schoolmate.jwt.JWTFilter;
 import com.spring.schoolmate.jwt.JWTUtil;
 import com.spring.schoolmate.jwt.LoginFilter;
 import com.spring.schoolmate.jwt.OAuth2SuccessHandler;
-import com.spring.schoolmate.repository.AdminRepository;
 import com.spring.schoolmate.repository.StudentRepository;
 import com.spring.schoolmate.service.CustomOAuth2UserService;
-import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.annotation.Bean;
@@ -17,7 +14,6 @@ import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
-import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer; // 추가
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
@@ -26,10 +22,6 @@ import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 import org.springframework.web.cors.CorsConfigurationSource;
 
-import org.springframework.security.web.authentication.AuthenticationFailureHandler; // 추가
-import org.springframework.security.core.AuthenticationException; // 추가
-
-import java.io.IOException;
 import java.util.Arrays;
 
 @EnableWebSecurity
@@ -37,17 +29,20 @@ import java.util.Arrays;
 @RequiredArgsConstructor
 @Slf4j
 public class SecurityConfig {
-
+    //AuthenticationManager 가 인자로 받을 AuthenticationConfiguraion 객체 생성자 주입
     private final AuthenticationConfiguration authenticationConfiguration;
     private final JWTUtil jwtUtil;
-    private final CustomOAuth2UserService customOAuth2UserService;
-    private final OAuth2SuccessHandler oAuth2SuccessHandler;
-    private final StudentRepository studentRepository;
-    private final AdminRepository adminRepository;
+    private final CustomOAuth2UserService customOAuth2UserService; // 주입
+    private final OAuth2SuccessHandler oAuth2SuccessHandler; // 주입
+    private final StudentRepository studentRepository; // 주입 추가
 
+    //AuthenticationManager Bean 등록
+    /*
+     * Spring Security가 주입되면 내부적으로 글로벌 영역에  AuthenticationManager 는 자동으로 주입된다
+     */
     @Bean
     public AuthenticationManager authenticationManager(AuthenticationConfiguration configuration)
-      throws Exception{
+            throws Exception{
         return configuration.getAuthenticationManager();
     }
 
@@ -57,75 +52,75 @@ public class SecurityConfig {
         return new BCryptPasswordEncoder();
     }
 
+    /**
+     * Spring Security의 메인 설정을 담당하는 SecurityFilterChain을 Bean으로 등록합니다.
+     */
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         log.info("SecurityFilterChain ===============>");
-
-        // 1. CORS 설정
+        // 1. CORS 설정 (프론트엔드 서버와의 통신을 위함)
         http.cors(cors -> cors.configurationSource(corsConfigurationSource()));
 
-        // 2. CSRF, FormLogin, HttpBasic 비활성화
-        http.csrf(AbstractHttpConfigurer::disable);
-        http.formLogin(AbstractHttpConfigurer::disable);
-        http.httpBasic(AbstractHttpConfigurer::disable);
+        // 2. CSRF 보호 기능 비활성화 (JWT 방식에서는 세션을 사용하지 않으므로 비활성화해도 안전합니다.)
+        http.csrf(auth -> auth.disable());
 
-        // 3. URL별 접근 권한 설정
+        // 3. Form 기반 로그인 방식 비활성화 (우리는 JSON 기반의 커스텀 필터를 사용합니다.)
+        http.formLogin(auth -> auth.disable());
+
+        // 4. HTTP Basic 인증 방식 비활성화
+        http.httpBasic(auth -> auth.disable());
+
+        // 5. URL별 접근 권한 설정
         http.authorizeHttpRequests(auth -> auth
-          .requestMatchers("/api/auth/**", "/swagger-ui/**", "/v3/api-docs/**", "/api/schools/**", "/oauth2/authorization/**").permitAll()
-          .requestMatchers("/admin").hasRole("ADMIN")
-          .anyRequest().authenticated());
+                // "/api/auth/**" 경로의 모든 요청은 인증 없이 허용 (회원가입, 로그인 등)
+                .requestMatchers("/api/auth/**", "/swagger-ui/**", "/v3/api-docs/**", "/api/schools/**").permitAll()
+                .requestMatchers("/admin").hasRole("ADMIN")
+                // 그 외의 모든 요청은 반드시 인증을 거쳐야 함
+                .anyRequest().authenticated());
 
-        // 4. OAuth2 로그인 설정
-        http.oauth2Login(oauth2 -> oauth2
-          .userInfoEndpoint(userInfo -> userInfo
-            .userService(customOAuth2UserService)
-          )
-          .successHandler(oAuth2SuccessHandler)
-        );
-
-        // 5. 세션 관리 설정: Stateless
+        // 6. 세션 관리 설정: 세션을 사용하지 않고, 모든 요청을 상태 없이(stateless) 처리하도록 설정
         http.sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS));
 
-        // 6. 필터 등록 순서 수정: LoginFilter 먼저 등록 후, JWTFilter를 그 앞에 배치
+        // 7. OAuth2 로그인 설정
+        http.oauth2Login(oauth2 -> oauth2
+                // 사용자 정보를 가져온 후 처리할 서비스를 등록
+                .userInfoEndpoint(userInfo -> userInfo
+                        .userService(customOAuth2UserService)
+                )
+                // 로그인 성공(신규/기존) 후의 로직을 처리할 핸들러를 등록
+                .successHandler(oAuth2SuccessHandler)
+        );
 
-        // 6-1. LoginFilter 등록 (UsernamePasswordAuthenticationFilter 자리를 대체)
+        // 8. WTFilter를 UsernamePasswordAuthenticationFilter 앞에 배치
+        // 모든 요청은 JWTFilter를 먼저 거쳐 토큰을 검증받습니다.
+        http.addFilterBefore(new JWTFilter(jwtUtil, studentRepository), LoginFilter.class); // studentRepository 전달
+
+        // 9. oginFilter를 기본 UsernamePasswordAuthenticationFilter 자리에 등록(교체)
+        // 이렇게 하면 JWTFilter가 자연스럽게 LoginFilter보다 앞에 위치하게 됩니다.
         LoginFilter loginFilter = new LoginFilter(authenticationManager(authenticationConfiguration), jwtUtil);
-        loginFilter.setFilterProcessesUrl("/api/auth/login"); // 일반 로그인만 처리하도록 제한
-        loginFilter.setAuthenticationFailureHandler(new CustomAuthenticationFailureHandler());
-        http.addFilterAt(loginFilter, UsernamePasswordAuthenticationFilter.class); // LoginFilter를 등록
-
-// 6-2. JWTFilter를 LoginFilter (즉, UsernamePasswordAuthenticationFilter) 앞에 배치
-        http.addFilterBefore(new JWTFilter(jwtUtil, studentRepository, adminRepository), LoginFilter.class);
-
+        loginFilter.setFilterProcessesUrl("/api/auth/login"); // 일반 로그인 처리 URL 지정
+        http.addFilterAt(loginFilter, UsernamePasswordAuthenticationFilter.class);
         return http.build();
     }
 
-    // 🚨 [필수] LoginFilter의 unsuccessfulAuthentication 로직을 실행하기 위한 핸들러 구현
-    // LoginFilter는 UsernamePasswordAuthenticationFilter를 상속받았기 때문에
-    // 기본적으로 successful/unsuccessfulAuthentication을 내부적으로 가지고 있습니다.
-    // 하지만 명시적으로 FailureHandler를 설정해야 HTML 응답을 방지할 수 있습니다.
-    private static class CustomAuthenticationFailureHandler implements AuthenticationFailureHandler {
-        private final LoginFilter loginFilter = new LoginFilter(null, null); // JWTUtil, AM은 사용하지 않으므로 null 허용
 
-        @Override
-        public void onAuthenticationFailure(HttpServletRequest request, HttpServletResponse response, AuthenticationException exception) throws IOException, IOException {
-            // LoginFilter의 unsuccessfulAuthentication 로직을 재사용
-            loginFilter.unsuccessfulAuthentication(request, response, exception);
-        }
-    }
-
+    /**
+     * CORS(Cross-Origin Resource Sharing) 설정을 위한 Bean입니다.
+     * 다른 도메인(예: http://localhost:3000)의 프론트엔드 서버가 우리 API 서버에 요청할 수 있도록 허용합니다.
+     */
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        configuration.setAllowedOrigins(Arrays.asList("http://localhost:3000"));
-        configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"));
+        configuration.setAllowedOrigins(Arrays.asList("http://localhost:3000")); // 허용할 출처
+        configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS")); // 허용할 HTTP 메소드
         configuration.setAllowCredentials(true);
-        configuration.setAllowedHeaders(Arrays.asList("*"));
+        configuration.setAllowedHeaders(Arrays.asList("*")); // 모든 헤더 허용
         configuration.setMaxAge(3600L);
+        // 클라이언트가 응답 헤더의 "Authorization"에 접근할 수 있도록 노출
         configuration.addExposedHeader("Authorization");
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
-        source.registerCorsConfiguration("/**", configuration);
+        source.registerCorsConfiguration("/**", configuration); // 모든 경로에 대해 위 CORS 설정 적용
         return source;
     }
 }

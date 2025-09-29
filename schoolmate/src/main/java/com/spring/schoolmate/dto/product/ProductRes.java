@@ -1,9 +1,10 @@
-package com.spring.schoolmate.dto;
+package com.spring.schoolmate.dto.product;
 
 import com.spring.schoolmate.entity.Product;
 import lombok.*;
 
 import java.util.Date;
+import java.time.LocalDateTime;
 
 @Getter
 @Setter
@@ -19,8 +20,14 @@ public class ProductRes {
   private Integer productPoints;
   private Date expirationDate;
   private Integer stock;
-  private Date registrationDate;
+  private LocalDateTime registrationDate;
 
+  /**
+   * Product 엔티티를 ProductRes DTO로 변환.
+   * totalQuantity 필드는 응답 DTO에서 제외됨.
+   * @param product 변환할 Product 엔티티
+   * @return ProductRes DTO
+   */
   public static ProductRes fromEntity(Product product) {
     return ProductRes.builder()
       .productId(product.getProductId())

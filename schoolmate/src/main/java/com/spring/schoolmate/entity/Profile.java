@@ -1,5 +1,6 @@
 package com.spring.schoolmate.entity;
 
+import com.spring.schoolmate.dto.profile.ProfileUpdateReq;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -77,4 +78,24 @@ public class Profile {
     // 프로필 이미지 URL
     @Column(name = "profile_img_url")
     private String profileImgUrl;
+
+    // DTO를 받아 프로필 정보를 업데이트하는 메소드
+    /**
+     * ProfileUpdateReq DTO를 받아 프로필 정보를 업데이트합니다.
+     * JPA의 '더티 체킹'에 의해 이 메소드가 호출되고 트랜잭션이 끝나면 자동으로 DB에 반영됩니다.
+     */
+    public void update(ProfileUpdateReq req) {
+        if (req.getNickname() != null) this.nickname = req.getNickname();
+        if (req.getGender() != null) this.gender = req.getGender();
+        if (req.getPhone() != null) this.phone = req.getPhone();
+        if (req.getBirthDay() != null) this.birthDay = req.getBirthDay();
+        if (req.getProfileImgUrl() != null) this.profileImgUrl = req.getProfileImgUrl();
+        if (req.getScCode() != null) this.scCode = req.getScCode();
+        if (req.getSchoolCode() != null) this.schoolCode = req.getSchoolCode();
+        if (req.getSchoolName() != null) this.schoolName = req.getSchoolName();
+        if (req.getMajorName() != null) this.majorName = req.getMajorName();
+        if (req.getGrade() != null) this.grade = req.getGrade();
+        if (req.getLevel() != null) this.level = req.getLevel();
+        if (req.getClassNo() != null) this.classNo = req.getClassNo();
+    }
 }

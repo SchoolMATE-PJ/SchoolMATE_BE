@@ -8,10 +8,10 @@ import java.util.List;
 
 @Getter
 @NoArgsConstructor
-public class TimetableWrapper {
+public class MisTimetableWrapper {
     @JsonProperty("head")
     private List<Object> head;
 
     @JsonProperty("row")
-    private List<TimetableRow> row;
+    private List<MisTimetableRow> row;
 }

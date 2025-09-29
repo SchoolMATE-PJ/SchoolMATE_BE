@@ -73,7 +73,7 @@ public class SecurityConfig {
         // 5. URL별 접근 권한 설정
         http.authorizeHttpRequests(auth -> auth
                 // "/api/auth/**" 경로의 모든 요청은 인증 없이 허용 (회원가입, 로그인 등)
-                .requestMatchers("/api/auth/**", "/swagger-ui/**", "/v3/api-docs/**", "/api/schools/**").permitAll()
+                .requestMatchers("/api/auth/**", "/swagger-ui/**", "/v3/api-docs/**", "/api/school/**", "/api/school-search/**").permitAll()
                 .requestMatchers("/admin").hasRole("ADMIN")
                 // 그 외의 모든 요청은 반드시 인증을 거쳐야 함
                 .anyRequest().authenticated());

@@ -15,6 +15,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.util.StringUtils;
 
 import java.io.IOException;
 import java.util.Collection;
@@ -69,31 +70,40 @@ public class LoginFilter extends UsernamePasswordAuthenticationFilter {
     protected void unsuccessfulAuthentication(HttpServletRequest request, HttpServletResponse response,
                                               AuthenticationException failed) throws IOException {
 
+        log.info("로그인 실패: {}", failed.getMessage());
         Map<String, String> errorBody = Map.of("message", "로그인에 실패했습니다.");
 
         //로그인 실패시 401 응답 코드 반환
         response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
         response.setContentType("application/json;charset=UTF-8");
+        response.getWriter().write("{\"error\": \"로그인 실패\", \"message\": \"이메일 또는 비밀번호가 일치하지 않습니다.\"}");
     }
 
-    @Override
-    public Authentication attemptAuthentication(HttpServletRequest request, HttpServletResponse response) throws AuthenticationException {
-        try {
-            // 1. JSON 데이터를 DTO 대신 Map으로 변환합니다.
-            Map<String, String> credentials = objectMapper.readValue(request.getInputStream(), Map.class);
+   // JSON을 Map으로 바로 변환해서 처리하도록 함
+   @Override
+   public Authentication attemptAuthentication(HttpServletRequest request, HttpServletResponse response) throws AuthenticationException {
 
-            // 2. Map에서 email과 password를 직접 추출합니다.
-            String email = credentials.get("email");
-            String password = credentials.get("password");
+       String contentType = request.getContentType();
 
-            // 3. Spring Security가 이해할 수 있는 형태로 변환합니다.
-            UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(email, password, null);
+       // 1. Content-Type이 JSON인 경우, 우리가 만든 JSON 파싱 로직을 실행
+       if (contentType != null && StringUtils.hasText(contentType) && contentType.contains("application/json")) {
+           try {
+               log.info("JSON 형식의 로그인을 시도합니다.");
+               Map<String, String> credentials = objectMapper.readValue(request.getInputStream(), Map.class);
+               String email = credentials.get("email");
+               String password = credentials.get("password");
 
-            // 4. AuthenticationManager에 인증을 위임합니다.
-            return getAuthenticationManager().authenticate(authToken);
-        } catch (IOException e) {
-            log.error("로그인 시도 중 JSON 파싱 에러: {}", e.getMessage());
-            throw new RuntimeException("로그인 요청 처리 중 에러가 발생했습니다.", e);
-        }
-    }
+               UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(email, password, null);
+               return getAuthenticationManager().authenticate(authToken);
+
+           } catch (IOException e) {
+               log.error("로그인 시도 중 JSON 파싱 에러: {}", e.getMessage());
+               throw new RuntimeException("로그인 요청 처리 중 에러가 발생했습니다.", e);
+           }
+       }
+
+       // 2. 그 외의 경우 (form-data 등), 부모 클래스의 원래 로직을 실행
+       log.info("form-data 형식의 로그인을 시도합니다.");
+       return super.attemptAuthentication(request, response);
+   }
 }

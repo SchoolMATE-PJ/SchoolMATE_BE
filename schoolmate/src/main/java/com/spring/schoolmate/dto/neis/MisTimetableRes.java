@@ -10,5 +10,5 @@ import java.util.List;
 @NoArgsConstructor
 public class MisTimetableRes {
     @JsonProperty("misTimetable") // 중학교 시간표 응답 키
-    private List<TimetableWrapper> misTimetable;
+    private List<MisTimetableWrapper> misTimetable;
 }

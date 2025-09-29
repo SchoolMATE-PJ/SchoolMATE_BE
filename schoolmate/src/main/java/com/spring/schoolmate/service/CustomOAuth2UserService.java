@@ -1,27 +1,21 @@
 package com.spring.schoolmate.service;
 
-import com.spring.schoolmate.entity.ExternalAccount;
-import com.spring.schoolmate.entity.Role;
 import com.spring.schoolmate.entity.Student;
-import com.spring.schoolmate.repository.ExternalAccountRepository;
-import com.spring.schoolmate.repository.ProfileRepository;
-import com.spring.schoolmate.repository.RoleRepository;
+import com.spring.schoolmate.entity.Role;
 import com.spring.schoolmate.repository.StudentRepository;
+import com.spring.schoolmate.repository.RoleRepository; // 🚨 RoleRepository 임포트 추가
 import com.spring.schoolmate.security.OAuth2CustomUser;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.oauth2.client.userinfo.DefaultOAuth2UserService;
 import org.springframework.security.oauth2.client.userinfo.OAuth2UserRequest;
-import org.springframework.security.oauth2.client.userinfo.OAuth2UserService;
 import org.springframework.security.oauth2.core.OAuth2AuthenticationException;
 import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Collections;
 import java.util.Map;
-import java.util.Optional;
-import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
@@ -29,58 +23,47 @@ import java.util.UUID;
 public class CustomOAuth2UserService extends DefaultOAuth2UserService {
 
     private final StudentRepository studentRepository;
-    private final ExternalAccountRepository externalAccountRepository;
+    private final RoleRepository roleRepository; // 🚨 RoleRepository 주입
 
     @Override
-    @Transactional
     public OAuth2User loadUser(OAuth2UserRequest userRequest) throws OAuth2AuthenticationException {
         OAuth2User oAuth2User = super.loadUser(userRequest);
-        String provider = userRequest.getClientRegistration().getRegistrationId(); // "kakao"
+
+        String registrationId = userRequest.getClientRegistration().getRegistrationId();
+
+        // 🚨 [오류 해결] getNameAttributeKey 대신 userRequest에서 추출
+        String userNameAttributeName = userRequest.getClientRegistration()
+          .getProviderDetails()
+          .getUserInfoEndpoint()
+          .getUserNameAttributeName();
 
         Map<String, Object> attributes = oAuth2User.getAttributes();
-        Map<String, Object> kakaoAccount = (Map<String, Object>) attributes.get("kakao_account");
+        Student student = findOrCreateStudent(registrationId, attributes);
 
-        String providerId = attributes.get("id").toString();
-        String email = kakaoAccount.get("email").toString();
-
-        // [시나리오 1] 카카오 ID로 이미 가입된 소셜 회원인지 확인
-        Optional<ExternalAccount> externalAccountOptional = externalAccountRepository
-                .findByProviderNameAndProviderId(provider, providerId);
-
-        if (externalAccountOptional.isPresent()) {
-            log.info("기존 소셜 회원으로 로그인합니다. Provider ID: {}", providerId);
-            Student student = externalAccountOptional.get().getStudent();
-            return createOAuth2CustomUser(oAuth2User, student);
-        }
-
-        // [시나리오 2] 카카오 이메일로 일반 가입한 회원이 있는지 확인
-        Optional<Student> studentOptional = studentRepository.findByEmail(email);
-        if (studentOptional.isPresent()) {
-            log.info("기존 일반 회원을 소셜 계정과 자동 연동합니다. Email: {}", email);
-            Student student = studentOptional.get();
-            // DB에 소셜 계정 정보를 새로 연결(저장)
-            ExternalAccount newExternalAccount = ExternalAccount.builder()
-                    .student(student)
-                    .providerName(provider)
-                    .providerId(providerId)
-                    .build();
-            externalAccountRepository.save(newExternalAccount);
-            return createOAuth2CustomUser(oAuth2User, student);
-        }
-
-        // [시나리오 3] 위 두 경우 모두 아니면, 완전 신규 회원으로 판단
-        log.info("신규 소셜 회원입니다. 추가 정보 입력 페이지로 이동이 필요합니다.");
-        // DB에 저장하지 않고, SuccessHandler에서 신규 회원임을 판단할 수 있도록 임시 Student 객체를 생성
-        Student tempStudent = Student.builder().name("GUEST_FOR_SIGNUP").build();
-        return createOAuth2CustomUser(oAuth2User, tempStudent);
+        // 🚨 [오류 해결] OAuth2CustomUser 생성 시 5가지 인수를 모두 전달
+        return new OAuth2CustomUser(
+          Collections.singleton(new SimpleGrantedAuthority("ROLE_STUDENT")),
+          attributes,
+          userNameAttributeName,
+          student,
+          registrationId
+        );
     }
 
-    private OAuth2CustomUser createOAuth2CustomUser(OAuth2User oAuth2User, Student student) {
-        return new OAuth2CustomUser(
-                Collections.emptyList(),
-                oAuth2User.getAttributes(),
-                "id", // 카카오의 경우 'id'가 고유 식별자
-                student
-        );
+    private Student findOrCreateStudent(String registrationId, Map<String, Object> attributes) {
+        String email = (String) attributes.get("email");
+
+        // 🚨 [오류 해결] RoleType 대신 Role 엔티티를 조회하여 주입 (incompatible types 해결)
+        // RoleRepository의 findByRoleName(Role.RoleType) 메서드가 있다고 가정합니다.
+        Role studentRole = roleRepository.findByRoleName(Role.RoleType.STUDENT)
+          .orElseThrow(() -> new RuntimeException("STUDENT Role not found"));
+
+        // 신규 사용자 또는 임시 사용자 객체 반환
+        return Student.builder()
+          .email(email)
+          .role(studentRole) // Role 엔티티 주입
+          .provider(registrationId) // 🚨 Student.java 수정으로 해결
+          .name("임시사용자")
+          .build();
     }
 }

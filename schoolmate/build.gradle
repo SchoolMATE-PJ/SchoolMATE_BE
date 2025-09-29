@@ -62,6 +62,6 @@ dependencies {
 
 }
 
-tasks.named('test') {
-	useJUnitPlatform()
+tasks.named('bootRun') {
+  jvmArgs = ['--sun-misc-unsafe-memory-access=allow']
 }

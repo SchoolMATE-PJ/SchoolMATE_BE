@@ -69,13 +69,11 @@ public class LoginFilter extends UsernamePasswordAuthenticationFilter {
     protected void unsuccessfulAuthentication(HttpServletRequest request, HttpServletResponse response,
                                               AuthenticationException failed) throws IOException {
 
-        log.warn("로그인 실패: {}", failed.getMessage());
         Map<String, String> errorBody = Map.of("message", "로그인에 실패했습니다.");
 
         //로그인 실패시 401 응답 코드 반환
         response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
         response.setContentType("application/json;charset=UTF-8");
-        response.getWriter().print(gson.toJson(errorBody));
     }
 
     @Override

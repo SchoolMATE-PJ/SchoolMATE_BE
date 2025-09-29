@@ -25,7 +25,7 @@ public class AuthController {
     /**
      * 일반 회원가입
      */
-    @PostMapping("/signUp")
+    @PostMapping("/signup")
     public ResponseEntity<?> signUp(@RequestBody SignUpReq request) {
         // AuthService에 회원가입 처리를 위임하고, 결과를 반환받습니다.
         // 성공 시 201 Created 상태 코드와 함께 생성된 사용자 정보를 반환합니다.
@@ -39,7 +39,7 @@ public class AuthController {
     /**
      * 외부 계정(소셜)으로 시작하여, 추가 정보를 받아 최종 회원가입을 처리하는 API입니다.
      */
-    @PostMapping("/signUp/social")
+    @PostMapping("/signup/social")
     public ResponseEntity<?> externalSignUp(@RequestBody ExternalSignUpReq request) {
         try {
             // try 블록 안에서 정상적인 로직을 시도합니다.

@@ -20,6 +20,7 @@ public class ProfileRes {
     private String phone;
     private LocalDate birthDay;
     private String scCode;
+    private String majorName;
     private String schoolCode;
     private String schoolName;
     private Integer grade;
@@ -37,6 +38,7 @@ public class ProfileRes {
                 .scCode(profile.getScCode())
                 .schoolCode(profile.getSchoolCode())
                 .schoolName(profile.getSchoolName())
+                .majorName(profile.getMajorName())
                 .grade(profile.getGrade())
                 .level(profile.getLevel())
                 .classNo(profile.getClassNo())

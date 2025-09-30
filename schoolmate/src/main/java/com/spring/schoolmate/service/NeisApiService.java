@@ -101,23 +101,24 @@ public class NeisApiService {
     }
 
     /**
-     * 시도교육청코드, 학교코드, 급식 일자로 NEIS에서 급식 식단을 검색합니다.
-     *
-     * @param educationOfficeCode 시도교육청코드 (ATPT_OFCDC_SC_CODE)
-     * @param schoolCode          학교 행정표준코드 (SD_SCHUL_CODE)
-     * @param mealDate            급식 일자 (YYYYMMDD)
-     * @return 검색된 급식 정보 목록
+     * 특정 학교의 '기간' 내 급식 정보를 조회합니다. (메소드명 변경 및 파라미터 수정)
+     * @param educationOfficeCode 시도교육청코드
+     * @param schoolCode 학교 행정표준코드
+     * @param startDate 조회 시작일 (YYYYMMDD)
+     * @param endDate 조회 종료일 (YYYYMMDD)
+     * @return 급식 정보 목록
      */
-    public List<MealInfoRow> getMealService(String educationOfficeCode, String schoolCode, String mealDate) {
+    public List<MealInfoRow> getMealInfo(String educationOfficeCode, String schoolCode, String startDate, String endDate ) {
         // 1. WebClient를 사용하여 NEIS API에 보낼 최종 URL을 조립합니다.
         String url = UriComponentsBuilder.fromUriString(baseUrl + mealServicePath)
                 .queryParam("KEY", apiKey)
                 .queryParam("Type", "json")
                 .queryParam("pIndex", 1)
                 .queryParam("pSize", 100)
-                .queryParam("ATPT_OFCDC_SC_CODE", educationOfficeCode) // 시도교육청 코드
-                .queryParam("SD_SCHUL_CODE", schoolCode) // 학교 코드
-                .queryParam("MLSV_YMD", mealDate) // 급식 일자 (YYYYMMDD)
+                .queryParam("ATPT_OFCDC_SC_CODE", educationOfficeCode)
+                .queryParam("SD_SCHUL_CODE", schoolCode)
+                .queryParam("MLSV_FROM_YMD", startDate)
+                .queryParam("MLSV_TO_YMD", endDate)
                 .build(true) // 인코딩 옵션
                 .toUriString();
 
@@ -126,13 +127,18 @@ public class NeisApiService {
                 .uri(url)
                 .retrieve()
                 .bodyToMono(MealInfoRes.class)
-                .block(); // 비동기 응답을 동기적으로 기다립니다.
+                .block();
 
-        if (response == null || response.getMealServiceDietInfo() == null || response.getMealServiceDietInfo().size() < 2) {
-            return Collections.emptyList();
+        if (response != null
+                && response.getMealServiceDietInfo() != null
+                && !response.getMealServiceDietInfo().isEmpty()
+                && response.getMealServiceDietInfo().size() > 1) {
+            return Objects.requireNonNullElse(
+                    response.getMealServiceDietInfo()
+                            .get(1).
+                            getRow(), Collections.emptyList());
         }
-        List<MealInfoRow> rows = response.getMealServiceDietInfo().get(1).getRow();
-        return Objects.requireNonNullElse(rows, Collections.emptyList());
+        return Collections.emptyList();
     }
 
     /**

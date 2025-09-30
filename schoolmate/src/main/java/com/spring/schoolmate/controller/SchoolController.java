@@ -31,22 +31,27 @@ public class SchoolController {
     private final ProfileService profileService;
 
     // 급식 정보 조회 API
-    @Operation(summary = "급식 정보 조회", description = "특정 학교, 특정 날짜의 급식 정보를 조회합니다.")
     @GetMapping("/meal")
-    public ResponseEntity<List<MealInfoRow>> getMySchoolMeal(
-            @AuthenticationPrincipal CustomStudentDetails customStudentDetails) {
+    @Operation(summary = "주간 급식 정보 조회", description = "시작 날짜를 기준으로 7일간의 급식 정보를 조회합니다.")
+    public ResponseEntity<List<MealInfoRow>> getMealInfo(
+            @AuthenticationPrincipal CustomStudentDetails customStudentDetails,
+            @Parameter(description = "조회 시작일 (YYYYMMDD)", required = true) @RequestParam String startDate) {
 
         ProfileRes userProfile = profileService.getProfile(customStudentDetails.getStudent().getStudentId());
-        String todayDate = LocalDate.now().format(DateTimeFormatter.ofPattern("yyyyMMdd"));
 
-        List<MealInfoRow> mealList = neisApiService.getMealService(
+        // 시작 날짜를 기준으로 7일 뒤 날짜를 계산합니다.
+        LocalDate start = LocalDate.parse(startDate, DateTimeFormatter.ofPattern("yyyyMMdd"));
+        LocalDate end = start.plusDays(6); // 7일치 데이터 (시작일 포함)
+        String endDate = end.format(DateTimeFormatter.ofPattern("yyyyMMdd"));
+
+        List<MealInfoRow> mealList = neisApiService.getMealInfo(
                 userProfile.getScCode(),
                 userProfile.getSchoolCode(),
-                todayDate
+                startDate,
+                endDate
         );
         return ResponseEntity.ok(mealList);
     }
-
     // 학사일정 조회 API
     @Operation(summary = "학사일정 조회", description = "특정 학교의 기간 내 학사일정을 조회합니다.")
     @GetMapping("/schedule")

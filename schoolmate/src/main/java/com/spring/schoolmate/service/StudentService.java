@@ -3,6 +3,7 @@ package com.spring.schoolmate.service;
 import com.spring.schoolmate.dto.student.StudentReq;
 import com.spring.schoolmate.entity.Role;
 import com.spring.schoolmate.entity.Student;
+import com.spring.schoolmate.repository.ProfileRepository;
 import com.spring.schoolmate.repository.RoleRepository;
 import com.spring.schoolmate.repository.StudentRepository;
 import lombok.RequiredArgsConstructor;

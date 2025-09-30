@@ -5,6 +5,8 @@ import com.spring.schoolmate.dto.auth.ExternalSignUpReq;
 import com.spring.schoolmate.dto.auth.ExternalSignUpRes;
 import com.spring.schoolmate.dto.auth.SignUpReq;
 import com.spring.schoolmate.dto.external.ExternalAccountReq;
+import com.spring.schoolmate.repository.ProfileRepository;
+import com.spring.schoolmate.repository.StudentRepository;
 import com.spring.schoolmate.service.AuthService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -21,6 +23,8 @@ import org.springframework.web.bind.annotation.*;
 public class AuthController {
 
     private final AuthService authService;
+    private final StudentRepository studentRepository;
+    private final ProfileRepository profileRepository;
 
     /**
      * 일반 회원가입
@@ -58,4 +62,24 @@ public class AuthController {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("서버 내부 오류가 발생했습니다.");
         }
     }
+
+    // 이메일 중복 확인 API
+    @GetMapping("/check-email")
+    public ResponseEntity<Boolean> checkEmail(@RequestParam String email) {
+        // existsByEmail은 boolean 값을 반환. 중복이면 true, 아니면 false
+        return ResponseEntity.ok(studentRepository.existsByEmail(email));
+    }
+
+    // 닉네임 중복 확인 API
+    @GetMapping("/check-nickname")
+    public ResponseEntity<Boolean> checkNickname(@RequestParam String nickname) {
+        return ResponseEntity.ok(profileRepository.existsByNickname(nickname));
+    }
+
+    // 전화번호 중복 확인 API
+    @GetMapping("/check-phone")
+    public ResponseEntity<Boolean> checkPhone(@RequestParam String phone) {
+        return ResponseEntity.ok(profileRepository.existsByPhone(phone));
+    }
+
 }

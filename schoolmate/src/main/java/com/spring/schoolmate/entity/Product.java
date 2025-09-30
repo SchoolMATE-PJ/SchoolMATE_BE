@@ -4,8 +4,8 @@ import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
 
-import java.util.Date;
-import java.time.LocalDateTime; // 🚨 [추가] LocalDateTime 임포트
+import java.time.LocalDate;
+import java.time.LocalDateTime;
 
 @Builder
 @Setter
@@ -33,7 +33,7 @@ public class Product {
   private Integer productPoints;
 
   @Column(nullable = false)
-  private Date expirationDate;
+  private LocalDate expirationDate;
 
   @Column(nullable = false)
   private Integer stock;
@@ -41,7 +41,9 @@ public class Product {
   @Column(nullable = false)
   private Integer totalQuantity;
 
+  @Column(length = 255)
+  private String imageUrl;
+
   @CreationTimestamp
-  // 🚨 [수정] DB NOT NULL 오류 해결 및 최신 표준 적용
   private LocalDateTime registrationDate;
 }

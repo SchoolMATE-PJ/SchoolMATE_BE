@@ -39,3 +39,6 @@ out/
 ### .DS_Store ###
 .DS_Store
 
+# Firebase service account keys
+src/main/resources/firebase/*.json
+

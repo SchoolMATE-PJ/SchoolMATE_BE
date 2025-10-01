@@ -38,6 +38,7 @@ public class OAuth2SuccessHandler extends SimpleUrlAuthenticationSuccessHandler 
             try {
                 // 1. 회원가입을 마저 진행하기 위한 임시 토큰 생성
                 String tempToken = jwtUtil.createTempSignupToken(oAuth2User);
+                log.error("!!!!!!!!!! 임시 토큰 생성 성공! TOKEN: {} !!!!!!!!!", tempToken);
 
                 // 2. 프론트에서 닉네임을 바로 쓸 수 있도록 카카오 닉네임을 추출
                 Map<String, Object> kakaoAccount = (Map<String, Object>) oAuth2User.getAttributes().get("kakao_account");
@@ -45,7 +46,7 @@ public class OAuth2SuccessHandler extends SimpleUrlAuthenticationSuccessHandler 
                 String nickname = profile.get("nickname").toString();
 
                 // 3. 프론트엔드의 추가 정보 입력 페이지로 리다이렉트 (임시 토큰, 닉네임 전달)
-                String redirectUrl = UriComponentsBuilder.fromUriString("http://localhost:3000/social-signup")
+                String redirectUrl = UriComponentsBuilder.fromUriString("http://localhost:3000/signup")
                         .queryParam("tempToken", tempToken)
                         .queryParam("nickname", nickname)
                         .build()

@@ -72,7 +72,14 @@ public class SecurityConfig {
         // 4. URL별 접근 권한 설정
         http.authorizeHttpRequests(auth -> auth
                 // "/api/auth/**" 경로의 모든 요청은 인증 없이 허용 (회원가입, 로그인 등)
-                .requestMatchers("/api/auth/**", "/swagger-ui/**", "/v3/api-docs/**", "/api/school/**", "/api/school-search/**").permitAll()
+                .requestMatchers(
+                        "/api/auth/**",
+                        "/oauth2/**",
+                        "/auth/login/kakao",
+                        "/swagger-ui/**",
+                        "/v3/api-docs/**",
+                        "/api/school/**",
+                        "/api/school-search/**").permitAll()
                 .requestMatchers("/admin").hasRole("ADMIN")
                 // 그 외의 모든 요청은 반드시 인증을 거쳐야 함
                 .anyRequest().authenticated());
@@ -90,10 +97,10 @@ public class SecurityConfig {
 
         // 7. 필터 등록 순서 정리 (중복 제거)
 
-        // 🚨 LoginFilter를 기본 필터 자리에 등록
+        // LoginFilter를 기본 필터 자리에 등록
         http.addFilterAt(loginFilter, UsernamePasswordAuthenticationFilter.class);
 
-        // 🚨 JWTFilter를 LoginFilter보다 '앞에' 등록 (토큰 유효성 검사)
+        // JWTFilter를 LoginFilter보다 '앞에' 등록 (토큰 유효성 검사)
         // JWTFilter는 AdminRepository를 주입받아야 함
         http.addFilterBefore(
           new JWTFilter(jwtUtil, studentRepository, adminRepository),

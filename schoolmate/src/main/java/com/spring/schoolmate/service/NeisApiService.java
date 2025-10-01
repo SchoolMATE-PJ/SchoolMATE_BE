@@ -224,7 +224,8 @@ public class NeisApiService {
      */
     public List<ClassInfoRow> getClassInfo(String educationOfficeCode,
                                            String schoolCode,
-                                           String grade) {
+                                           String grade,
+                                           String majorName) {
         // API는 현재 학년도(AY)를 필수로 요구합니다.
         String currentYear = String.valueOf(LocalDate.now().getYear());
 
@@ -249,8 +250,20 @@ public class NeisApiService {
         if (response == null || response.getClassInfo() == null || response.getClassInfo().size() < 2) {
             return Collections.emptyList();
         }
-        List<ClassInfoRow> rows = response.getClassInfo().get(1).getRow();
-        return Objects.requireNonNullElse(rows, Collections.emptyList());
+        List<ClassInfoRow> allClassList = response.getClassInfo().get(1).getRow();
+        if (allClassList == null) {
+            return Collections.emptyList();
+        }
+
+        // majorName 파라미터가 있고, 비어있지 않다면 서버에서 필터링
+        if (majorName != null && !majorName.isBlank()) {
+            return allClassList.stream()
+                    // row.getDDDEP_NM() -> row.getMajorName() 으로 수정!
+                    .filter(row -> majorName.equals(row.getMajorName()))
+                    .collect(Collectors.toList());
+        }
+        // majorName이 없으면 (일반고 등) 전체 목록 반환
+        return allClassList;
     }
 
     /**

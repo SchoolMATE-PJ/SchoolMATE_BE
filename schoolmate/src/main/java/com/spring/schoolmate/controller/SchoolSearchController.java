@@ -48,9 +48,10 @@ public class SchoolSearchController {
     public ResponseEntity<List<ClassInfoRow>> getClassInfo(
             @Parameter(description = "시도교육청코드", required = true) @RequestParam String educationOfficeCode,
             @Parameter(description = "학교 행정표준코드", required = true) @RequestParam String schoolCode,
-            @Parameter(description = "학년", required = true) @RequestParam String grade) {
+            @Parameter(description = "학년", required = true) @RequestParam String grade,
+            @Parameter(description = "학과명 (선택)") @RequestParam(required = false) String majorName) {
 
-        List<ClassInfoRow> classList = neisApiService.getClassInfo(educationOfficeCode, schoolCode, grade);
+        List<ClassInfoRow> classList = neisApiService.getClassInfo(educationOfficeCode, schoolCode, grade, majorName);
         return ResponseEntity.ok(classList);
     }
 }

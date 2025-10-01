@@ -10,6 +10,9 @@ public class ClassInfoRow {
     @JsonProperty("AY")
     private String schoolYear; // 학년도
 
+    @JsonProperty("DDDEP_NM")
+    private String majorName; // 학과
+
     @JsonProperty("GRADE")
     private String grade; // 학년
 

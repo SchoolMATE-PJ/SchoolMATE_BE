@@ -7,6 +7,6 @@ import lombok.NoArgsConstructor;
 @Getter
 @NoArgsConstructor
 public class SchoolMajorRow {
-    @JsonProperty("MAJOR_NM")
+    @JsonProperty("DDDEP_NM")
     private String majorName; // 학과명
 }

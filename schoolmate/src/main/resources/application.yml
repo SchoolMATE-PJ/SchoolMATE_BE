@@ -94,3 +94,7 @@ app:
   admin:
     email: admin@schoolmate.com
     password: 1234  # 초기화 로직에서 BCrypt로 인코딩될 평문 비밀번호
+
+firebase:
+  service-account-file: firebase/schoolmate-e3eef-firebase-adminsdk-fbsvc-6e850c88f7.json
+  storage-bucket: "schoolmate-e3eef.firebasestorage.app"

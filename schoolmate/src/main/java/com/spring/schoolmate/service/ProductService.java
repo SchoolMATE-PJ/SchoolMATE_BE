@@ -28,7 +28,7 @@ public class ProductService {
     String name = productName.toUpperCase();
 
     if (name.contains("카페") || name.contains("라떼") || name.contains("아메리카노")
-      || name.contains("프라페")) {
+      || name.contains("프라페") || name.contains("공차")) {
       prefix = "CO";
       category = "커피";
     } else if (name.contains("CU") || name.contains("세븐일레븐") || name.contains("GS25") || name.contains("상품권")) {
@@ -40,6 +40,10 @@ public class ProductService {
     } else if (name.contains("CGV") || name.contains("롯데시네마") || name.contains("메가박스") || name.contains("영화")) {
       prefix = "MO";
       category = "영화";
+    }
+    else if (name.contains("뚜레쥬르") || name.contains("파리바게트") || name.contains("던킨도너츠") || name.contains("성심당")) {
+      prefix = "BR";
+      category = "빵집";
     }
     return new String[]{prefix, category};
   }

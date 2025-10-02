@@ -29,7 +29,7 @@ spring:
             client-name: Kakao
             client-id: f71b4c3a397902b27c666e262e974e86
             client-secret: J2uxIYX3pfaY6pShm31bwG85whCeMR2e
-            redirect-uri: http://localhost:9000/auth/login/kakao
+            redirect-uri: http://localhost:9000/login/oauth2/code/kakao
             authorization-grant-type: authorization_code
             scope:
               - profile_nickname

@@ -75,7 +75,7 @@ public class SecurityConfig {
                 .requestMatchers(
                         "/api/auth/**",
                         "/oauth2/**",
-                        "/auth/login/kakao",
+                        "/login/oauth2/code/kakao",
                         "/swagger-ui/**",
                         "/v3/api-docs/**",
                         "/api/school/**",

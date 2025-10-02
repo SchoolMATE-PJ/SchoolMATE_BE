@@ -44,11 +44,13 @@ public class OAuth2SuccessHandler extends SimpleUrlAuthenticationSuccessHandler 
                 Map<String, Object> kakaoAccount = (Map<String, Object>) oAuth2User.getAttributes().get("kakao_account");
                 Map<String, Object> profile = (Map<String, Object>) kakaoAccount.get("profile");
                 String nickname = profile.get("nickname").toString();
+                String email = student.getEmail();
 
                 // 3. 프론트엔드의 추가 정보 입력 페이지로 리다이렉트 (임시 토큰, 닉네임 전달)
                 String redirectUrl = UriComponentsBuilder.fromUriString("http://localhost:3000/signup")
                         .queryParam("tempToken", tempToken)
                         .queryParam("nickname", nickname)
+                        .queryParam("email", email)
                         .build()
                         .encode(StandardCharsets.UTF_8)
                         .toUriString();

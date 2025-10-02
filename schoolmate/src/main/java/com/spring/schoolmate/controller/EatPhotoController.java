@@ -7,11 +7,12 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import com.spring.schoolmate.dto.eatphoto.EatPhotoRes;
 
 import java.util.List;
 
 @RestController
-@RequestMapping("/api/v1/eatphotos")
+@RequestMapping("/api/v1/photos")
 public class EatPhotoController {
 
   private final EatPhotoService eatPhotoService;
@@ -26,9 +27,10 @@ public class EatPhotoController {
     return ResponseEntity.ok(photos);
   }
 
-  @GetMapping("/all")
-  public ResponseEntity<?> getAllStudentPhotos() {
-    List<EatPhoto> photos = eatPhotoService.getAllStudentPhotos();
+  // ⭐️ 반환 타입과 메서드 호출 결과 타입을 DTO로 변경 ⭐️
+  @GetMapping("/allStudentsPhotos")
+  public ResponseEntity<List<EatPhotoRes>> getAllStudentPhotos() {
+    List<EatPhotoRes> photos = eatPhotoService.getAllStudentPhotos();
     return ResponseEntity.ok(photos);
   }
 }

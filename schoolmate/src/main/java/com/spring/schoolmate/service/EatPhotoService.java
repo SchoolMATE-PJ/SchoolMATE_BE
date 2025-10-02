@@ -20,6 +20,9 @@ import java.time.LocalDateTime;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
+
+import com.spring.schoolmate.dto.eatphoto.EatPhotoRes;
 
 @Service
 @Transactional
@@ -126,7 +129,7 @@ public class EatPhotoService {
 
         // PointHistoryService.addPointTransaction 호출
         pointHistoryService.addPointTransaction(studentId, POINT_AMOUNT, "급식 사진 업로드");
-        return "급식 사진이 확인되어 100포인트가 지급되었습니다.";
+        return "급식 사진이 확인되어 "+ POINT_AMOUNT + "포인트가 지급되었습니다.";
       } else {
         return "급식 사진이 아닙니다. 다시 시도해 주세요.";
       }
@@ -138,8 +141,15 @@ public class EatPhotoService {
     return eatPhotoRepository.findByStudent_StudentId(studentId);
   }
 
-  // 모든 학생이 업로드한 모든 사진을 조회
-  public List<EatPhoto> getAllStudentPhotos() {
-    return eatPhotoRepository.findAllStudentPhotos();
+  // ⭐️ 반환 타입을 EatPhotoRes 리스트로 변경 ⭐️
+  @Transactional(readOnly = true)
+  public List<EatPhotoRes> getAllStudentPhotos() {
+    // JPQL 쿼리는 FETCH JOIN으로 Profile까지 모두 가져왔기 때문에 여기서 안전하게 접근 가능
+    List<EatPhoto> photos = eatPhotoRepository.findAllStudentPhotos();
+
+    // ⭐️ 엔티티를 DTO로 변환 ⭐️
+    return photos.stream()
+      .map(EatPhotoRes::fromEntity)
+      .collect(Collectors.toList());
   }
 }

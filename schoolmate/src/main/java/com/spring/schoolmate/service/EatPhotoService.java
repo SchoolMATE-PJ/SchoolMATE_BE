@@ -13,6 +13,9 @@ import com.spring.schoolmate.repository.StudentRepository;
 import com.spring.schoolmate.repository.VisionLabelRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
+
+import java.io.IOException;
 import java.time.LocalDateTime;
 import java.util.Collections;
 import java.util.List;
@@ -22,73 +25,83 @@ import java.util.Optional;
 @Transactional
 public class EatPhotoService {
 
-  // JPA 리포지토리 및 다른 서비스에 대한 의존성 주입을 위한 변수들
   private final EatPhotoRepository eatPhotoRepository;
   private final EatphotoVisionScoreRepository eatphotoVisionScoreRepository;
   private final VisionLabelRepository visionLabelRepository;
   private final StudentRepository studentRepository;
-  private final TranslationService translationService; // 라벨 번역을 위한 서비스
+  private final TranslationService translationService;
+  private final FirebaseStorageService firebaseStorageService;
+  private final PointHistoryService pointHistoryService; // 포인트 지급 서비스
 
-  // 생성자를 통한 의존성 주입 (Constructor Injection)
   public EatPhotoService(
     EatPhotoRepository eatPhotoRepository,
     EatphotoVisionScoreRepository eatphotoVisionScoreRepository,
     VisionLabelRepository visionLabelRepository,
     StudentRepository studentRepository,
-    TranslationService translationService) {
+    TranslationService translationService,
+    FirebaseStorageService firebaseStorageService,
+    PointHistoryService pointHistoryService) {
     this.eatPhotoRepository = eatPhotoRepository;
     this.eatphotoVisionScoreRepository = eatphotoVisionScoreRepository;
     this.visionLabelRepository = visionLabelRepository;
     this.studentRepository = studentRepository;
     this.translationService = translationService;
+    this.firebaseStorageService = firebaseStorageService;
+    this.pointHistoryService = pointHistoryService;
   }
 
   // 업로드된 사진을 분석하고 결과를 저장
-  public String uploadAndAnalyzePhoto(byte[] photoData, Long studentId) throws Exception {
-    // 1. 학생 ID로 학생 엔티티를 찾습니다. 없으면 예외를 던진다.
+  public String uploadAndAnalyzePhoto(MultipartFile file, Long studentId) throws Exception {
+
+    // 1. 학생 ID로 학생 엔티티를 찾습니다.
     Student student = studentRepository.findById(studentId)
       .orElseThrow(() -> new DMLException("학생의 고유 아이디를 찾지 못했습니다.: " + studentId));
 
-    // 2. 새로운 급식 사진(EatPhoto) 엔티티를 생성하고 데이터베이스에 저장
+    String imageUrl = null;
+    try {
+      // 2. Firebase Storage에 파일 업로드 및 URL 획득 (NULL 오류 해결)
+      imageUrl = firebaseStorageService.uploadFile(file);
+    } catch (IOException e) {
+      throw new DMLException("이미지 업로드에 실패했습니다. (Storage Error): " + e.getMessage());
+    }
+
+    // 3. 새로운 급식 사진(EatPhoto) 엔티티를 생성하고 데이터베이스에 저장
     EatPhoto eatPhoto = new EatPhoto();
     eatPhoto.setStudent(student);
-    eatPhoto.setEatimageUrl(null); // S3를 사용하지 않으므로 URL은 null로 설정
+    eatPhoto.setEatimageUrl(imageUrl);
     eatPhoto.setEatuploadedAt(LocalDateTime.now());
     final EatPhoto savedEatPhoto = eatPhotoRepository.save(eatPhoto);
 
-    // 3. Google Cloud Vision AI API를 호출하여 이미지 분석을 수행
-    // try-with-resources 구문을 사용해 클라이언트 리소스를 자동으로 해제
+    // 4. Google Cloud Vision AI API를 호출하여 이미지 분석을 수행
+    byte[] photoData = file.getBytes();
+
     try (ImageAnnotatorClient vision = ImageAnnotatorClient.create()) {
-      // 이미지 바이트 데이터를 Google Cloud Vision API가 인식할 수 있는 형식으로 변환
       ByteString imgBytes = ByteString.copyFrom(photoData);
       Image image = Image.newBuilder().setContent(imgBytes).build();
-      // 이미지에서 '라벨 감지' 기능을 요청
       Feature feature = Feature.newBuilder().setType(Feature.Type.LABEL_DETECTION).build();
       AnnotateImageRequest request = AnnotateImageRequest.newBuilder()
         .addFeatures(feature)
         .setImage(image)
         .build();
 
-      // Vision AI에 분석 요청을 보내고 응답
       BatchAnnotateImagesResponse response = vision.batchAnnotateImages(Collections.singletonList(request));
       AnnotateImageResponse annotateImageResponse = response.getResponses(0);
 
-      // 4. 분석 결과를 처리하고 데이터베이스에 저장
+      // 5. 분석 결과를 처리하고 데이터베이스에 저장
       boolean isSchoolLunch = false;
-      // AI가 감지한 라벨 목록을 순회
+      int recognizedFoodCount = 0;
+
       for (EntityAnnotation label : annotateImageResponse.getLabelAnnotationsList()) {
         String englishLabelName = label.getDescription();
         Float score = label.getScore();
 
-        // 라벨 이름과 점수를 기반으로 급식 사진 여부를 판단
         if ((englishLabelName.equalsIgnoreCase("Food") || englishLabelName.equalsIgnoreCase("Meal") || englishLabelName.equalsIgnoreCase("Cuisine")) && score > 0.80f) {
           isSchoolLunch = true;
+          recognizedFoodCount++;
         }
 
-        // TranslationService를 이용해 영문 라벨을 한국어로 번역
         String koreanLabelName = translationService.translate(englishLabelName, "ko");
 
-        // 데이터베이스에 번역된 라벨이 이미 존재하는지 확인하고, 없으면 새로 저장
         Optional<VisionLabel> existingLabel = visionLabelRepository.findByLabelName(koreanLabelName);
         VisionLabel visionLabel = existingLabel.orElseGet(() -> {
           return visionLabelRepository.save(
@@ -99,7 +112,6 @@ public class EatPhotoService {
           );
         });
 
-        // 사진과 분석 결과를 연결하여 데이터베이스에 저장
         EatphotoVisionScore visionScore = EatphotoVisionScore.builder()
           .eatphoto(savedEatPhoto)
           .visionLabel(visionLabel)
@@ -108,11 +120,15 @@ public class EatPhotoService {
         eatphotoVisionScoreRepository.save(visionScore);
       }
 
-      // 5. 최종 급식 사진 여부에 따라 다른 결과를 반환
-      if (isSchoolLunch) {
-        return "급식 사진이 맞습니다.";
+      // 6. 최종 급식 사진 여부에 따라 포인트 지급 및 결과 반환
+      if (isSchoolLunch && recognizedFoodCount > 0) {
+        final int POINT_AMOUNT = 2000;
+
+        // PointHistoryService.addPointTransaction 호출
+        pointHistoryService.addPointTransaction(studentId, POINT_AMOUNT, "급식 사진 업로드");
+        return "급식 사진이 확인되어 100포인트가 지급되었습니다.";
       } else {
-        return "급식 사진이 아닙니다.";
+        return "급식 사진이 아닙니다. 다시 시도해 주세요.";
       }
     }
   }

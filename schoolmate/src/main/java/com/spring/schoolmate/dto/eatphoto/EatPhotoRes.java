@@ -1,4 +1,4 @@
-package com.spring.schoolmate.dto;
+package com.spring.schoolmate.dto.eatphoto;
 
 import com.spring.schoolmate.entity.EatPhoto;
 import lombok.Builder;

@@ -91,4 +91,29 @@ public class PointHistoryController {
       return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
     }
   }
+
+  /**
+   * 로그인된 학생의 모든 포인트 거래 내역을 최신순으로 조회. (authToken 기반)
+   * GET /api/point-history/student/me
+   * @param authentication Spring Security의 인증 정보
+   * @return PointHistoryRes DTO 목록 (최신순)
+   */
+  @GetMapping("/student/me") // <- 프론트엔드가 요청하는 경로
+  public ResponseEntity<List<PointHistoryRes>> getMyPointHistory(Authentication authentication) {
+    if (authentication == null || !authentication.isAuthenticated()) {
+      return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+    }
+    String email = authentication.getName(); // 토큰에서 이메일 추출
+
+    try {
+      // 이메일을 사용하여 거래 내역 조회
+      List<PointHistoryRes> historyList = pointHistoryService.getHistoryByStudentEmail(email).stream()
+        .map(PointHistoryRes::fromEntity)
+        .collect(Collectors.toList());
+      return ResponseEntity.ok(historyList);
+    } catch (NoSuchElementException | NotFoundException e) {
+      // 학생을 찾지 못한 경우
+      return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+    }
+  }
 }

@@ -1,10 +1,10 @@
 package com.spring.schoolmate.service;
 
-import com.spring.schoolmate.dto.pointhistory.PointHistoryReq; // ⭐️ 관리자 지급 DTO
+import com.spring.schoolmate.dto.pointhistory.PointHistoryReq;
 import com.spring.schoolmate.entity.PointHistory;
 import com.spring.schoolmate.entity.Student;
 import com.spring.schoolmate.entity.Role;
-import com.spring.schoolmate.exception.NotFoundException; // Controller에서 사용할 수 있도록 유지
+import com.spring.schoolmate.exception.NotFoundException;
 import com.spring.schoolmate.repository.PointHistoryRepository;
 import com.spring.schoolmate.repository.StudentRepository;
 import lombok.RequiredArgsConstructor;
@@ -12,6 +12,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.sql.Timestamp;
+import java.util.Date;
 import java.util.List;
 import java.util.NoSuchElementException;
 
@@ -26,10 +27,6 @@ public class PointHistoryService {
 
   /**
    * 특정 학생의 현재 보유 포인트를 이메일로 조회.
-   * Controller의 /student/{email}/balance 엔드포인트에 사용.
-   * @param email 학생 이메일
-   * @return 현재 포인트 잔액 (Integer)
-   * @throws NoSuchElementException 학생을 찾을 수 없을 때 (Controller에서 404 처리)
    */
   public Integer getCurrentBalanceByStudentEmail(String email) {
     Student student = studentService.findByEmail(email)
@@ -40,7 +37,6 @@ public class PointHistoryService {
 
   /**
    * 특정 학생의 전체 포인트 거래 내역을 이메일로 조회. (최신순)
-   * Controller의 /student/{email} GET 요청에 사용.
    */
   public List<PointHistory> getHistoryByStudentEmail(String email) {
     Student student = studentService.findByEmail(email)
@@ -61,7 +57,7 @@ public class PointHistoryService {
     Integer newBalance = currentBalance + history.getAmount();
 
     if (newBalance < 0) {
-      // 잔액 부족 오류는 Controller에서 400 BAD_REQUEST로 처리.
+      // 🚨 잔액 부족 오류 발생 시 메시지를 포함하여 throw
       throw new IllegalArgumentException("포인트 잔액이 부족하여 거래를 기록할 수 없습니다. 필요한 포인트: " + (-history.getAmount()));
     }
 
@@ -77,23 +73,41 @@ public class PointHistoryService {
   }
 
   /**
-   * role이 'STUDENT'인 학생의 이메일을 기반으로 포인트 거래를 기록. (상품 교환 등)
-   * Controller의 /student/{email} POST 요청에 사용.
+   * 학생 ID를 기반으로 포인트 거래를 기록. (ProductExchangeService에서 호출하는 용도)
    */
   @Transactional
-  public PointHistory recordTransactionByStudentEmail(String email, PointHistory history) {
-    Student student = studentService.findByEmail(email)
-      .orElseThrow(() -> new NoSuchElementException("이메일 " + email + "에 해당하는 학생을 찾을 수 없습니다."));
+  public void recordTransaction(
+    Long studentId,           // 학생 ID
+    Integer amount,           // 포인트 변동량 (차감 시 음수)
+    Long refId,               // 참조 ID
+    String refType,           // 참조 타입 (예: PRODUCT)
+    String transactionType    // 트랜잭션 타입 (예: EXCHANGE)
+  ) {
+    // 1. 학생 찾기 (잔액 업데이트용)
+    Student student = studentRepository.findById(studentId)
+      .orElseThrow(() -> new NoSuchElementException("학생을 찾을 수 없습니다."));
 
-    // STUDENT 역할 검증
-    if (student.getRole() == null || student.getRole().getRoleName() != Role.RoleType.STUDENT) {
-      throw new IllegalArgumentException("이메일 " + email + "은(는) STUDENT 역할이 아니므로 거래를 기록할 수 없습니다.");
+    // 2. 잔액 업데이트
+    int newBalance = student.getPointBalance() + amount;
+    if (newBalance < 0) {
+      // 이 오류는 ProductExchangeService에서 이미 걸러졌지만, 안전을 위해 유지
+      throw new IllegalArgumentException("잔액 부족");
     }
+    student.setPointBalance(newBalance);
+    studentRepository.save(student);
 
+    // 3. PointHistory 엔티티 생성 및 저장
+    PointHistory history = new PointHistory();
     history.setStudent(student);
+    history.setAmount(amount);
+    history.setRefId(refId);
+    history.setRefType(refType);
+    history.setTsType(transactionType);
+    history.setBalanceAfter(newBalance); // 업데이트된 잔액 기록
+
     history.setCreatedAt(new Timestamp(System.currentTimeMillis()));
 
-    return recordTransaction(history);
+    pointHistoryRepository.save(history);
   }
 
   /**
@@ -117,6 +131,29 @@ public class PointHistoryService {
       .build();
 
     // 3. 잔액 업데이트 및 기록 저장
+    return recordTransaction(history);
+  }
+
+  /**
+   * 학생의 이메일을 기반으로 포인트 거래를 기록. (관리자 지급/차감 등 일반 거래 기록)
+   * 🚨 PointHistoryController에서 호출하는 메서드입니다.
+   */
+  @Transactional
+  public PointHistory recordTransactionByStudentEmail(String email, PointHistory history) {
+    // 1. 이메일로 학생 찾기
+    Student student = studentService.findByEmail(email)
+      .orElseThrow(() -> new NoSuchElementException("이메일 " + email + "에 해당하는 학생을 찾을 수 없습니다."));
+
+    // 2. PointHistory 엔티티에 Student 객체 설정
+    history.setStudent(student);
+
+    // 3. 기록 시각 설정 (엔티티에 @CreationTimestamp가 있지만, 확실하게 설정)
+    if (history.getCreatedAt() == null) {
+      history.setCreatedAt(new Timestamp(System.currentTimeMillis()));
+    }
+
+    // 4. 핵심 로직 호출 (잔액 업데이트 및 DB 기록)
+    // 이 메서드는 잔액 부족 검증 및 Student/PointHistory 저장을 수행합니다.
     return recordTransaction(history);
   }
 }

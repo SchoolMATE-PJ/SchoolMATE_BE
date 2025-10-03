@@ -14,10 +14,12 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
+import java.util.NoSuchElementException; // 추가
 
 @RestController
 @RequestMapping("/api/exchanges")
 @RequiredArgsConstructor
+@Slf4j // 로깅 사용을 위해 추가
 public class ProductExchangeController {
 
   private final ProductExchangeService productExchangeService;
@@ -34,19 +36,28 @@ public class ProductExchangeController {
     @PathVariable Integer productId,
     Authentication authentication) {
 
+    // studentId는 Long 타입입니다.
     CustomStudentDetails userDetails = (CustomStudentDetails) authentication.getPrincipal();
     Long studentId = userDetails.getStudent().getStudentId();
 
     try {
       ProductExchange newExchange = productExchangeService.exchangeProduct(studentId, productId);
       return new ResponseEntity<>(newExchange, HttpStatus.CREATED);
-    } catch (NotFoundException e) {
-      // 포인트 부족 또는 학생/상품 미발견 시 400 Bad Request 또는 404 Not Found
+    } catch (NoSuchElementException e) {
+      // 학생 또는 상품 미발견 시 404 NOT_FOUND
+      log.warn("상품 교환 실패: 학생 또는 상품을 찾을 수 없습니다. Student ID: {}, Product ID: {}", studentId, productId, e);
+      return ResponseEntity.status(HttpStatus.NOT_FOUND).body(e.getMessage());
+    } catch (IllegalArgumentException e) {
+      // 포인트 부족 또는 재고 부족 시 400 BAD_REQUEST
+      log.warn("상품 교환 실패: 포인트 또는 재고 부족. Student ID: {}, Product ID: {}", studentId, productId, e);
       return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
     } catch (Exception e) {
-      return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("상품 교환 중 오류가 발생했습니다.");
+      log.error("상품 교환 중 예상치 못한 오류 발생. Student ID: {}, Product ID: {}", studentId, productId, e);
+      return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("상품 교환 중 예상치 못한 오류가 발생했습니다.");
     }
   }
+
+  // ---
 
   /**
    * 교환 상품 사용 상태를 '사용완료'로 변경 (STUDENT 권한 필요)
@@ -59,10 +70,13 @@ public class ProductExchangeController {
     try {
       ProductExchange usedExchange = productExchangeService.useProduct(productExchangeId);
       return ResponseEntity.ok(usedExchange);
-    } catch (NotFoundException e) {
+    } catch (NoSuchElementException e) {
+      // NotFoundException 대신 NoSuchElementException을 사용하도록 Service에서 변경했으므로 수정
       return ResponseEntity.status(HttpStatus.NOT_FOUND).body(e.getMessage());
     }
   }
+
+  // ---
 
   /**
    * 로그인한 학생의 교환 상품 목록을 페이지네이션하여 조회 (STUDENT 권한 필요)
@@ -79,7 +93,8 @@ public class ProductExchangeController {
     CustomStudentDetails userDetails = (CustomStudentDetails) authentication.getPrincipal();
     Long studentId = userDetails.getStudent().getStudentId();
 
-    Page<ProductExchange> exchanges = productExchangeService.getExchangedProductsByStudentId(studentId.intValue(), pageable);
+    // 🚨 오류 수정: studentId.intValue() 대신 Long 타입인 studentId를 그대로 전달
+    Page<ProductExchange> exchanges = productExchangeService.getExchangedProductsByStudentId(studentId, pageable);
     return ResponseEntity.ok(exchanges);
   }
 }

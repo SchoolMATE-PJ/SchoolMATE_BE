@@ -27,13 +27,12 @@ public class PointHistoryController {
    * @param authentication Spring Security의 인증 정보
    * @return 현재 보유 포인트 (Integer)
    */
-  @GetMapping("/student/me/balance") // 엔드포인트 수정: /student/{email}/balance -> /student/me/balance
+  @GetMapping("/student/me/balance")
   public ResponseEntity<Integer> getCurrentPointBalance(Authentication authentication) {
-    // 1. 인증 정보에서 이메일(Principal)을 추출
     if (authentication == null || !authentication.isAuthenticated()) {
       return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
     }
-    String email = authentication.getName(); // Spring Security Principal은 이메일(사용자명)을 반환
+    String email = authentication.getName();
 
     try {
       // 2. Service를 통해 이메일 기반으로 잔액 조회
@@ -66,25 +65,30 @@ public class PointHistoryController {
   }
 
   /**
-   * role이 'STUDENT'인 학생의 이메일을 기반으로 포인트 거래 내역을 기록.
-   * @param email 거래를 기록할 학생의 이메일
+   * 포인트 거래 내역을 기록. (관리자 지급/차감 또는 내부 시스템용)
+   * 상품 교환 로직은 ProductExchangeController로 분리되었으므로,
+   * 이 엔드포인트는 일반적인 포인트 기록용으로만 사용됨.
+   *
+   * @param email   거래를 기록할 학생의 이메일
    * @param history 기록할 PointHistory 객체 (amount, tsType 등이 포함되어야 함. JSON Body)
-   * @return 저장된 PointHistory 객체와 201 Created 응답
+   * @return 저장된 PointHistory 객체의 DTO와 201 Created 응답
    */
+  // 엔드포인트는 유지하지만, 사용 목적이 일반 거래 기록으로 변경됨.
   @PostMapping("/student/{email}")
-  public ResponseEntity<PointHistoryRes> createPointHistoryByStudentEmail(
+  public ResponseEntity<?> createPointHistoryByStudentEmail(
     @PathVariable String email,
     @RequestBody PointHistory history) {
 
     try {
+      // Service에서 학생 존재 여부 및 유효성 검증을 수행
       PointHistory savedHistory = pointHistoryService.recordTransactionByStudentEmail(email, history);
 
-      // 엔티티 대신 DTO를 사용하여 응답
       return ResponseEntity.status(HttpStatus.CREATED).body(PointHistoryRes.fromEntity(savedHistory));
     } catch (NoSuchElementException | NotFoundException e) {
-      return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+      return ResponseEntity.status(HttpStatus.NOT_FOUND).body(e.getMessage());
     } catch (IllegalArgumentException e) {
-      return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
+      // 포인트 부족 등 유효성 검증 실패 시 400 BAD_REQUEST
+      return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
     }
   }
 }

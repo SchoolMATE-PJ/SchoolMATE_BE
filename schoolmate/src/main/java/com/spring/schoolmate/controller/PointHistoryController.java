@@ -1,15 +1,18 @@
 package com.spring.schoolmate.controller;
 
+import com.spring.schoolmate.dto.pointhistory.PointHistoryRes;
 import com.spring.schoolmate.entity.PointHistory;
 import com.spring.schoolmate.service.PointHistoryService;
 import com.spring.schoolmate.exception.NotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 import java.util.NoSuchElementException;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/point-history")
@@ -19,47 +22,98 @@ public class PointHistoryController {
   private final PointHistoryService pointHistoryService;
 
   /**
+   * 로그인된 학생의 현재 보유 포인트를 조회. (authToken 기반)
+   * GET /api/point-history/student/me/balance
+   * @param authentication Spring Security의 인증 정보
+   * @return 현재 보유 포인트 (Integer)
+   */
+  @GetMapping("/student/me/balance")
+  public ResponseEntity<Integer> getCurrentPointBalance(Authentication authentication) {
+    if (authentication == null || !authentication.isAuthenticated()) {
+      return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+    }
+    String email = authentication.getName();
+
+    try {
+      // 2. Service를 통해 이메일 기반으로 잔액 조회
+      Integer currentPoints = pointHistoryService.getCurrentBalanceByStudentEmail(email);
+      return ResponseEntity.ok(currentPoints);
+    } catch (NoSuchElementException | NotFoundException e) {
+      // 학생을 찾지 못한 경우
+      return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+    }
+  }
+
+
+  /**
    * 특정 학생의 이메일을 기반으로 모든 포인트 거래 내역을 최신순으로 조회.
    * @param email 조회할 학생의 이메일
-   * @return PointHistory 엔티티 목록 (최신순)
+   * @return PointHistoryRes DTO 목록 (최신순)
    */
   @GetMapping("/student/{email}")
-  public ResponseEntity<List<PointHistory>> getPointHistoryByStudentEmail(
+  public ResponseEntity<List<PointHistoryRes>> getPointHistoryByStudentEmail(
     @PathVariable String email) {
 
     try {
-      List<PointHistory> historyList = pointHistoryService.getHistoryByStudentEmail(email);
-      // PointHistoryService에서 NoSuchElementException 대신 NotFoundException을 사용했으나,
-      // 통일성을 위해 둘 다 처리하거나, 서비스 계층에서 RuntimeException으로 통일하는 것이 좋다.
+      List<PointHistoryRes> historyList = pointHistoryService.getHistoryByStudentEmail(email).stream()
+        .map(PointHistoryRes::fromEntity)
+        .collect(Collectors.toList());
       return ResponseEntity.ok(historyList);
     } catch (NoSuchElementException | NotFoundException e) {
-      // 학생 이메일이 유효하지 않은 경우 404 Not Found 처리
       return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
     }
   }
 
   /**
-   * role이 'STUDENT'인 학생의 이메일을 기반으로 포인트 거래 내역을 기록.
-   * @param email 거래를 기록할 학생의 이메일
+   * 포인트 거래 내역을 기록. (관리자 지급/차감 또는 내부 시스템용)
+   * 상품 교환 로직은 ProductExchangeController로 분리되었으므로,
+   * 이 엔드포인트는 일반적인 포인트 기록용으로만 사용됨.
+   *
+   * @param email   거래를 기록할 학생의 이메일
    * @param history 기록할 PointHistory 객체 (amount, tsType 등이 포함되어야 함. JSON Body)
-   * @return 저장된 PointHistory 객체와 201 Created 응답
+   * @return 저장된 PointHistory 객체의 DTO와 201 Created 응답
    */
+  // 엔드포인트는 유지하지만, 사용 목적이 일반 거래 기록으로 변경됨.
   @PostMapping("/student/{email}")
-  public ResponseEntity<PointHistory> createPointHistoryByStudentEmail(
+  public ResponseEntity<?> createPointHistoryByStudentEmail(
     @PathVariable String email,
     @RequestBody PointHistory history) {
 
     try {
-      // Service 로직에서 학생 조회, Role 검증, 잔액 업데이트 및 내역 기록을 모두 처리
+      // Service에서 학생 존재 여부 및 유효성 검증을 수행
       PointHistory savedHistory = pointHistoryService.recordTransactionByStudentEmail(email, history);
 
-      return ResponseEntity.status(HttpStatus.CREATED).body(savedHistory);
+      return ResponseEntity.status(HttpStatus.CREATED).body(PointHistoryRes.fromEntity(savedHistory));
+    } catch (NoSuchElementException | NotFoundException e) {
+      return ResponseEntity.status(HttpStatus.NOT_FOUND).body(e.getMessage());
+    } catch (IllegalArgumentException e) {
+      // 포인트 부족 등 유효성 검증 실패 시 400 BAD_REQUEST
+      return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
+    }
+  }
+
+  /**
+   * 로그인된 학생의 모든 포인트 거래 내역을 최신순으로 조회. (authToken 기반)
+   * GET /api/point-history/student/me
+   * @param authentication Spring Security의 인증 정보
+   * @return PointHistoryRes DTO 목록 (최신순)
+   */
+  @GetMapping("/student/me") // <- 프론트엔드가 요청하는 경로
+  public ResponseEntity<List<PointHistoryRes>> getMyPointHistory(Authentication authentication) {
+    if (authentication == null || !authentication.isAuthenticated()) {
+      return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+    }
+    String email = authentication.getName(); // 토큰에서 이메일 추출
+
+    try {
+      // 이메일을 사용하여 거래 내역 조회
+      List<PointHistoryRes> historyList = pointHistoryService.getHistoryByStudentEmail(email).stream()
+        .map(PointHistoryRes::fromEntity)
+        .collect(Collectors.toList());
+      return ResponseEntity.ok(historyList);
     } catch (NoSuchElementException | NotFoundException e) {
       // 학생을 찾지 못한 경우
       return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
-    } catch (IllegalArgumentException e) {
-      // 잔액 부족, STUDENT 역할 아님 등의 비즈니스 로직 오류
-      return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(null);
     }
   }
 }

@@ -1,4 +1,5 @@
 package com.spring.schoolmate.entity;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
@@ -18,8 +19,13 @@ public class Student {
     @Column(name = "student_id")
     private Long studentId;
 
+    @OneToOne(mappedBy = "student", fetch = FetchType.LAZY)
+    @JsonIgnore // JSON 순환 참조 방지를 위해 추가
+    private Profile profile;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "role_id", nullable = false)
+    @JsonIgnore
     private Role role;
 
     @Column(nullable = false, unique = true)

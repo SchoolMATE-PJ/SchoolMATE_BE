@@ -156,4 +156,32 @@ public class PointHistoryService {
     // 이 메서드는 잔액 부족 검증 및 Student/PointHistory 저장을 수행합니다.
     return recordTransaction(history);
   }
+
+  /**
+   * 특정 학생의 급식 사진 업로드 거래 횟수를 이메일로 조회.
+   * (Controller의 GET /api/point-history/student/me/meal-count 에서 호출됩니다.)
+   */
+  public Integer getMealPhotoUploadCountByStudentEmail(String email) {
+    // 1. 이메일로 학생 찾기
+    Student student = studentService.findByEmail(email)
+      .orElseThrow(() -> new NoSuchElementException("이메일 " + email + "에 해당하는 학생을 찾을 수 없습니다."));
+
+    // 2. 💡 수정된 로직: refType='급식 사진 업로드' and tsType='EARN' 인 내역 횟수 조회
+    return pointHistoryRepository.countMealPhotoUploads(student);
+  }
+
+  /**
+   * 특정 학생이 사용한 포인트의 총합을 조회.
+   * (Controller의 GET /api/point-history/student/me/used-points 에서 호출됩니다.)
+   * @param email 학생 이메일
+   * @return 사용한 포인트 총합 (amount < 0 인 내역의 절댓값 합산)
+   */
+  public Integer getSumOfUsedPointsByStudentEmail(String email) {
+    // 1. 이메일로 학생 찾기
+    Student student = studentService.findByEmail(email)
+      .orElseThrow(() -> new NoSuchElementException("이메일 " + email + "에 해당하는 학생을 찾을 수 없습니다."));
+
+    // 2. Repository를 통해 사용된 포인트 총합 조회
+    return pointHistoryRepository.sumUsedPointsByStudent(student);
+  }
 }

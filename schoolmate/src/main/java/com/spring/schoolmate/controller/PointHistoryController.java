@@ -116,4 +116,50 @@ public class PointHistoryController {
       return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
     }
   }
+
+  /**
+   * 로그인된 학생의 급식 사진 업로드 횟수를 조회. (authToken 기반)
+   * GET /api/point-history/student/me/meal-count
+   * @param authentication Spring Security의 인증 정보
+   * @return 급식 사진 업로드 횟수 (Integer)
+   */
+  @GetMapping("/student/me/meal-count") // <- 프론트엔드가 요청할 경로
+  public ResponseEntity<Integer> getMealPhotoUploadCount(Authentication authentication) {
+    if (authentication == null || !authentication.isAuthenticated()) {
+      return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+    }
+    String email = authentication.getName();
+
+    try {
+      // Service를 통해 이메일 기반으로 급식 사진 업로드 횟수 조회 (특정 tsType을 카운트)
+      Integer count = pointHistoryService.getMealPhotoUploadCountByStudentEmail(email);
+      return ResponseEntity.ok(count);
+    } catch (NoSuchElementException | NotFoundException e) {
+      // 학생을 찾지 못한 경우
+      return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+    }
+  }
+
+  /**
+   * 💡 추가: 로그인된 학생이 사용한 포인트의 총합을 조회. (authToken 기반)
+   * GET /api/point-history/student/me/used-points
+   * @param authentication Spring Security의 인증 정보
+   * @return 사용한 포인트 총합 (Integer)
+   */
+  @GetMapping("/student/me/used-points") // <- 프론트엔드가 요청할 경로
+  public ResponseEntity<Integer> getSumOfUsedPoints(Authentication authentication) {
+    if (authentication == null || !authentication.isAuthenticated()) {
+      return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+    }
+    String email = authentication.getName();
+
+    try {
+      // Service를 통해 이메일 기반으로 사용한 포인트 총합 조회
+      Integer usedPoints = pointHistoryService.getSumOfUsedPointsByStudentEmail(email);
+      return ResponseEntity.ok(usedPoints);
+    } catch (NoSuchElementException | NotFoundException e) {
+      // 학생을 찾지 못한 경우
+      return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+    }
+  }
 }

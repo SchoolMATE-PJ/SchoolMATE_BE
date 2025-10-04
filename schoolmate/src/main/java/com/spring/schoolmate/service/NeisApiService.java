@@ -169,6 +169,8 @@ public class NeisApiService {
                 .build(true) // 인코딩 옵션
                 .toUriString();
 
+        log.info("Requesting NEIS API URL: {}", url);
+
         // 2. WebClient를 사용하여 GET 요청을 보내고, 응답을 SchoolScheduleRes DTO로 받습니다.
         SchoolScheduleRes response = webClient.get()
                 .uri(url)

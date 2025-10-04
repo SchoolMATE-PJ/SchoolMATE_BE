@@ -88,4 +88,20 @@ public class StudentService {
         // StudentRepository에 정의된 findByEmail을 사용하여 Optional<Student>를 반환
         return studentRepository.findByEmail(email);
     }
+
+    // 이메일로 학생 ID(PK)를 조회
+    /**
+     * 이메일로 학생의 고유 ID(PK)를 조회.
+     * @param email 조회할 이메일
+     * @return 학생의 ID (Long)
+     * @throws NoSuchElementException 해당 이메일의 학생이 없을 경우
+     */
+    public Long getStudentIdByEmail(String email) {
+        // findByEmail을 사용하여 학생 엔티티를 찾고, 존재하지 않으면 예외를 발생시킵니다.
+        Student student = findByEmail(email)
+          .orElseThrow(() -> new NoSuchElementException("이메일 " + email + "에 해당하는 학생을 찾을 수 없습니다."));
+
+        // 찾은 학생 엔티티에서 ID를 추출하여 반환합니다.
+        return student.getStudentId();
+    }
 }

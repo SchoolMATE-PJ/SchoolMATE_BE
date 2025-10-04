@@ -1,4 +1,4 @@
-package com.spring.schoolmate.dto;
+package com.spring.schoolmate.dto.productexchange;
 
 import com.spring.schoolmate.entity.ProductExchange;
 import lombok.Builder;

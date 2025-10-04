@@ -61,6 +61,64 @@ public class NeisApiService {
     @Value("${neis.path.class-info}")
     private String classInfoPath;
 
+    /**
+     *  학교 구분(일반고/특성화고)에 따라 분기하여 학과 목록을 조회하는 메서드
+     */
+    public List<String> findMajorsBySchoolType(String educationOfficeCode, String schoolCode) {
+        // 1. 학교 기본 정보를 먼저 조회
+        SchoolInfoRow schoolInfo = getSchoolInfoRow(educationOfficeCode, schoolCode);
+
+        // 2. 조회된 정보가 없으면 빈 리스트 반환
+        if (schoolInfo == null || schoolInfo.getSchoolType() == null) {
+            log.warn("학교 정보를 찾을 수 없거나, 학교 유형이 지정되지 않았습니다. educationOfficeCode={}, schoolCode={}", educationOfficeCode, schoolCode);
+            // 또는 기본 로직으로 학과정보를 조회하도록 처리할 수도 있음
+            return getSchoolMajors(educationOfficeCode, schoolCode).stream()
+                    .map(SchoolMajorRow::getMajorName)
+                    .collect(Collectors.toList());
+        }
+
+        // 3. '일반고'인 경우 학급 정보에서 학과 목록을 추출
+        if ("일반고".equals(schoolInfo.getSchoolType())) {
+            log.info("[일반고] 학급정보 API를 통해 학과 목록을 조회합니다.");
+            List<ClassInfoRow> classInfoRows = getClassInfo(educationOfficeCode, schoolCode, "1", null); // 1학년 기준으로 조회
+            return classInfoRows.stream()
+                    .map(ClassInfoRow::getMajorName)
+                    .distinct()
+                    .collect(Collectors.toList());
+        } else {
+            // 4. 특성화고 등 그 외 학교는 기존 학과정보 API를 사용
+            log.info("[특성화고/기타] 학과정보 API를 통해 학과 목록을 조회합니다.");
+            return getSchoolMajors(educationOfficeCode, schoolCode).stream()
+                    .map(SchoolMajorRow::getMajorName)
+                    .collect(Collectors.toList());
+        }
+    }
+
+    /**
+     * 재사용성을 위해 단일 학교 정보를 조회하는 private 헬퍼 메서드
+     * schoolName 파라미터를 schoolCode로 변경하여 더 정확한 조회가 가능하도록 개선
+     */
+    private SchoolInfoRow getSchoolInfoRow(String educationOfficeCode, String schoolCode) {
+        String url = UriComponentsBuilder.fromUriString(baseUrl + schoolInfoPath)
+                .queryParam("KEY", apiKey)
+                .queryParam("Type", "json")
+                .queryParam("pIndex", 1)
+                .queryParam("pSize", 10) // 단일 학교 조회를 목적으로 하므로 pSize를 줄임
+                .queryParam("ATPT_OFCDC_SC_CODE", educationOfficeCode)
+                .queryParam("SD_SCHUL_CODE", schoolCode)
+                .build(true)
+                .toUriString();
+
+        SchoolInfoRes response = webClient.get().uri(url).retrieve().bodyToMono(SchoolInfoRes.class).block();
+
+        if (response != null && response.getSchoolInfo() != null && response.getSchoolInfo().size() > 1) {
+            List<SchoolInfoRow> rows = response.getSchoolInfo().get(1).getRow();
+            if (rows != null && !rows.isEmpty()) {
+                return rows.get(0); // 첫 번째 결과를 반환
+            }
+        }
+        return null;
+    }
 
     /**
      * 학교 이름과 학교급으로 NEIS에서 학교 목록을 검색합니다.
@@ -71,7 +129,7 @@ public class NeisApiService {
      */
     public List<SchoolInfoRow> searchSchool(String schoolName, String schoolLevel) {
 
-        // 2. WebClient를 사용하여 NEIS API에 보낼 최종 URL을 조립합니다.
+        // 2. WebClient를 사용하여 NEIS API에 보낼 최종 URL을 조립
         String url = UriComponentsBuilder.fromUriString(baseUrl + schoolInfoPath)
                 .queryParam("KEY", apiKey)
                 .queryParam("Type", "json")
@@ -79,7 +137,7 @@ public class NeisApiService {
                 .queryParam("pSize", 100)
                 .queryParam("SCHUL_NM", schoolName)
                 .queryParam("SCHUL_KND_SC_NM", schoolLevel)
-                .build() // 인코딩 옵션
+                .build()
                 .toUriString();
         log.info("Requesting to NEIS API with URL: {}", url);
 
@@ -88,7 +146,7 @@ public class NeisApiService {
                 .uri(url)
                 .retrieve()
                 .bodyToMono(SchoolInfoRes.class)
-                .block(); // 비동기 응답을 동기적으로 기다립니다.
+                .block();
         log.info("Raw response from NEIS API: {}", response);
 
         if (response != null && response.getSchoolInfo() != null && !response.getSchoolInfo().isEmpty() && response.getSchoolInfo().size() > 1) {
@@ -164,8 +222,8 @@ public class NeisApiService {
                 .queryParam("pSize", 100)
                 .queryParam("ATPT_OFCDC_SC_CODE", educationOfficeCode) // 시도교육청 코드
                 .queryParam("SD_SCHUL_CODE", schoolCode) // 학교 코드
-                .queryParam("AA_FROM_YMD", startDate) // 시작 일자 (YYYYMMDD)
-                .queryParam("AA_TO_YMD", endDate) // 종료 일자 (YYYYMMDD)
+                .queryParam("AA_FROM_YMD", startDate) // 시작 일자
+                .queryParam("AA_TO_YMD", endDate) // 종료 일자
                 .build(true) // 인코딩 옵션
                 .toUriString();
 
@@ -261,7 +319,7 @@ public class NeisApiService {
         // majorName 파라미터가 있고, 비어있지 않다면 서버에서 필터링
         if (majorName != null && !majorName.isBlank()) {
             return allClassList.stream()
-                    // row.getDDDEP_NM() -> row.getMajorName() 으로 수정!
+                    // row.getDDDEP_NM()
                     .filter(row -> majorName.equals(row.getMajorName()))
                     .collect(Collectors.toList());
         }
@@ -284,6 +342,7 @@ public class NeisApiService {
                     return rows.stream()
                             .map(row -> TimetableRes.builder()
                                     .timetableDate(row.getTimetableDate())
+                                    .schoolName(row.getSchoolName())
                                     .period(row.getPeriod())
                                     .subjectName(row.getSubjectName())
                                     .build())
@@ -297,6 +356,7 @@ public class NeisApiService {
                     return rows.stream()
                             .map(row -> TimetableRes.builder()
                                     .timetableDate(row.getTimetableDate())
+                                    .schoolName(row.getSchoolName())
                                     .period(row.getPeriod())
                                     .subjectName(row.getSubjectName())
                                     .build())
@@ -310,6 +370,8 @@ public class NeisApiService {
                     return rows.stream()
                             .map(row -> TimetableRes.builder()
                                     .timetableDate(row.getTimetableDate())
+                                    .schoolName(row.getSchoolName())
+                                    .departmentName(row.getDepartmentName())
                                     .period(row.getPeriod())
                                     .subjectName(row.getSubjectName())
                                     .build())

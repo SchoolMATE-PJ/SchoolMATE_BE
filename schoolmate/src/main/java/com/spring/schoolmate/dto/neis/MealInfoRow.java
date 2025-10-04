@@ -16,9 +16,6 @@ public class MealInfoRow {
     @JsonProperty("DDISH_NM")
     private String dishName; // 요리명 및 알레르기 정보 (예: 쌀밥<5.13>)
 
-    @JsonProperty("ORPLC_INFO")
-    private String originInfo; // 원산지 정보
-
     @JsonProperty("CAL_INFO")
     private String calorieInfo; // 칼로리 정보
 

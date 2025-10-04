@@ -26,14 +26,14 @@ public class ProfileController {
             // 사용자 정보(CustomStudentDetails)를 직접 주입받을 수 있게 해줍니다.
             @AuthenticationPrincipal CustomStudentDetails customStudentDetails) {
 
-        log.info(">>>>> 프로필 정보 수정 API 시작");
+        log.info(">>>>> 프로필 정보 조회 API Call");
         // Spring Security 컨텍스트에서 현재 로그인한 사용자의 ID를 가져옵니다.
         Long currentStudentId = customStudentDetails.getStudent().getStudentId();
 
         // ProfileService에 ID를 전달하여 프로필 정보를 조회
         ProfileRes profileResponse = profileService.getProfile(currentStudentId);
 
-        log.info("<<<<< 프로필 정보 수정 성공! Student ID: {}", currentStudentId);
+        log.info("<<<<< 프로필 조회 성공! Student ID: {}", currentStudentId);
         // 조회된 정보를 200 OK 상태와 함께 반환
         return ResponseEntity.ok(profileResponse);
     }
@@ -44,12 +44,13 @@ public class ProfileController {
             @AuthenticationPrincipal CustomStudentDetails customStudentDetails,
             @RequestBody ProfileUpdateReq request) {
 
+        log.info(">>>>> 프로필 정보 수정 API Call");
         // 현재 로그인한 사용자의 ID를 가져옵니다.
         Long currentStudentId = customStudentDetails.getStudent().getStudentId();
 
         // ProfileService에 ID와 수정할 정보를 전달하여 프로필을 업데이트
         ProfileRes updatedProfile = profileService.updateProfile(currentStudentId, request);
-
+        log.info("<<<<< 프로필 수정 성공! Student ID: {}", currentStudentId);
         // 수정된 프로필 정보를 200 OK 상태와 함께 반환
         return ResponseEntity.ok(updatedProfile);
     }

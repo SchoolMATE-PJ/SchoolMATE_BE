@@ -10,6 +10,7 @@ import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
@@ -25,6 +26,7 @@ import java.util.List;
 @RequestMapping("/api/school")
 @RequiredArgsConstructor
 @Slf4j
+@CrossOrigin(origins = "http://localhost:3000")
 public class SchoolController {
 
     private final NeisApiService neisApiService;
@@ -32,17 +34,24 @@ public class SchoolController {
 
     // 급식 정보 조회 API
     @GetMapping("/meal")
-    @Operation(summary = "주간 급식 정보 조회", description = "시작 날짜를 기준으로 7일간의 급식 정보를 조회합니다.")
+    @Operation(summary = "월간 급식 정보 조회", description = "시작 날짜를 기준으로 한달간의 급식 정보를 조회합니다.")
     public ResponseEntity<List<MealInfoRow>> getMealInfo(
-            @AuthenticationPrincipal CustomStudentDetails customStudentDetails,
-            @Parameter(description = "조회 시작일 (YYYYMMDD)", required = true) @RequestParam String startDate) {
+            @AuthenticationPrincipal CustomStudentDetails customStudentDetails) {
 
+        log.info(">>>>> 월간 급식 정보 정보 조회 API Call");
+        if (customStudentDetails == null) {
+            log.error("인증 정보가 없습니다. (customStudentDetails is null)");
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+        log.info("급식 정보 조회 API 시작. 사용자: {}", customStudentDetails.getUsername());
+        
         ProfileRes userProfile = profileService.getProfile(customStudentDetails.getStudent().getStudentId());
 
-        // 시작 날짜를 기준으로 7일 뒤 날짜를 계산합니다.
-        LocalDate start = LocalDate.parse(startDate, DateTimeFormatter.ofPattern("yyyyMMdd"));
-        LocalDate end = start.plusDays(6); // 7일치 데이터 (시작일 포함)
-        String endDate = end.format(DateTimeFormatter.ofPattern("yyyyMMdd"));
+        LocalDate today = LocalDate.now(); // 오늘 날짜
+        LocalDate endDateAfterOneMonth = today.plusMonths(1); // 오늘로부터 한 달 뒤 날짜
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyyMMdd");
+        String startDate = today.format(formatter); // 시작일: 오늘
+        String endDate = endDateAfterOneMonth.format(formatter); // 종료일: 한 달 뒤
 
         List<MealInfoRow> mealList = neisApiService.getMealInfo(
                 userProfile.getScCode(),
@@ -50,14 +59,17 @@ public class SchoolController {
                 startDate,
                 endDate
         );
+        log.info("프로필 정보 확인 완료: scCode={}, schoolCode={}", userProfile.getScCode(), userProfile.getSchoolCode());
         return ResponseEntity.ok(mealList);
     }
+
     // 학사일정 조회 API
     @Operation(summary = "학사일정 조회", description = "특정 학교의 기간 내 학사일정을 조회합니다.")
     @GetMapping("/schedule")
     public ResponseEntity<List<SchoolScheduleRow>> getMySchoolSchedule(
             @AuthenticationPrincipal CustomStudentDetails customStudentDetails) {
 
+        log.info(">>>>> 학사일정 정보 조회 API Call");
         ProfileRes userProfile = profileService.getProfile(customStudentDetails.getStudent().getStudentId());
 
         LocalDate today = LocalDate.now();

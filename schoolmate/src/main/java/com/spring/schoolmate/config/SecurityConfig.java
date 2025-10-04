@@ -73,6 +73,7 @@ public class SecurityConfig {
         http.authorizeHttpRequests(auth -> auth
                 // "/api/auth/**" 경로의 모든 요청은 인증 없이 허용 (회원가입, 로그인 등)
                 .requestMatchers(
+                        "/api/**",
                         "/api/auth/**",
                         "/oauth2/**",
                         "/login/oauth2/code/kakao",

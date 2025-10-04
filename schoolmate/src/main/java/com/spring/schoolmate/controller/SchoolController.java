@@ -44,7 +44,7 @@ public class SchoolController {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
         log.info("급식 정보 조회 API 시작. 사용자: {}", customStudentDetails.getUsername());
-        
+
         ProfileRes userProfile = profileService.getProfile(customStudentDetails.getStudent().getStudentId());
 
         LocalDate today = LocalDate.now(); // 오늘 날짜
@@ -67,14 +67,20 @@ public class SchoolController {
     @Operation(summary = "학사일정 조회", description = "특정 학교의 기간 내 학사일정을 조회합니다.")
     @GetMapping("/schedule")
     public ResponseEntity<List<SchoolScheduleRow>> getMySchoolSchedule(
-            @AuthenticationPrincipal CustomStudentDetails customStudentDetails) {
+            @AuthenticationPrincipal CustomStudentDetails customStudentDetails,
+            @RequestParam int year,
+            @RequestParam int month) {
 
         log.info(">>>>> 학사일정 정보 조회 API Call");
         ProfileRes userProfile = profileService.getProfile(customStudentDetails.getStudent().getStudentId());
 
-        LocalDate today = LocalDate.now();
-        String startDate = today.withDayOfMonth(1).format(DateTimeFormatter.ofPattern("yyyyMMdd"));
-        String endDate = today.withDayOfMonth(today.lengthOfMonth()).format(DateTimeFormatter.ofPattern("yyyyMMdd"));
+        LocalDate start = LocalDate.of(year, month, 1);
+        LocalDate end = start.withDayOfMonth(start.lengthOfMonth());
+
+        String startDate = start.format(DateTimeFormatter.ofPattern("yyyyMMdd"));
+        String endDate = end.format(DateTimeFormatter.ofPattern("yyyyMMdd"));
+
+        log.info("조회 대상 기간: {} ~ {}", startDate, endDate);
 
         List<SchoolScheduleRow> scheduleList = neisApiService.getSchoolSchedule(
                 userProfile.getScCode(),

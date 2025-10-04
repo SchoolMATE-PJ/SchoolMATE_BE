@@ -35,11 +35,11 @@ public class SchoolSearchController {
 
     @GetMapping("/majors")
     @Operation(summary = "학과 정보 조회")
-    public ResponseEntity<List<SchoolMajorRow>> getSchoolMajors(
+    public ResponseEntity<List<String>> getSchoolMajors(
             @Parameter(description = "시도교육청코드", required = true) @RequestParam String educationOfficeCode,
             @Parameter(description = "학교 행정표준코드", required = true) @RequestParam String schoolCode) {
 
-        List<SchoolMajorRow> majorList = neisApiService.getSchoolMajors(educationOfficeCode, schoolCode);
+        List<String> majorList = neisApiService.findMajorsBySchoolType(educationOfficeCode, schoolCode);
         return ResponseEntity.ok(majorList);
     }
 

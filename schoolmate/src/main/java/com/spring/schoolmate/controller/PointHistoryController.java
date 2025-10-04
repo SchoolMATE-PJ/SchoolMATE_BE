@@ -4,6 +4,7 @@ import com.spring.schoolmate.dto.pointhistory.PointHistoryRes;
 import com.spring.schoolmate.entity.PointHistory;
 import com.spring.schoolmate.service.PointHistoryService;
 import com.spring.schoolmate.exception.NotFoundException;
+import com.spring.schoolmate.service.StudentService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -20,6 +21,7 @@ import java.util.stream.Collectors;
 public class PointHistoryController {
 
   private final PointHistoryService pointHistoryService;
+  private final StudentService studentService;
 
   /**
    * 로그인된 학생의 현재 보유 포인트를 조회. (authToken 기반)
@@ -113,6 +115,77 @@ public class PointHistoryController {
       return ResponseEntity.ok(historyList);
     } catch (NoSuchElementException | NotFoundException e) {
       // 학생을 찾지 못한 경우
+      return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+    }
+  }
+
+  /**
+   * 로그인된 학생의 급식 사진 업로드 횟수를 조회. (authToken 기반)
+   * GET /api/point-history/student/me/meal-count
+   * @param authentication Spring Security의 인증 정보
+   * @return 급식 사진 업로드 횟수 (Integer)
+   */
+  @GetMapping("/student/me/meal-count") // <- 프론트엔드가 요청할 경로
+  public ResponseEntity<Integer> getMealPhotoUploadCount(Authentication authentication) {
+    if (authentication == null || !authentication.isAuthenticated()) {
+      return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+    }
+    String email = authentication.getName();
+
+    try {
+      // Service를 통해 이메일 기반으로 급식 사진 업로드 횟수 조회 (특정 tsType을 카운트)
+      Integer count = pointHistoryService.getMealPhotoUploadCountByStudentEmail(email);
+      return ResponseEntity.ok(count);
+    } catch (NoSuchElementException | NotFoundException e) {
+      // 학생을 찾지 못한 경우
+      return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+    }
+  }
+
+  /**
+   * 로그인된 학생이 사용한 포인트의 총합을 조회. (authToken 기반)
+   * GET /api/point-history/student/me/used-points
+   * @param authentication Spring Security의 인증 정보
+   * @return 사용한 포인트 총합 (Integer)
+   */
+  @GetMapping("/student/me/used-points") // <- 프론트엔드가 요청할 경로
+  public ResponseEntity<Integer> getSumOfUsedPoints(Authentication authentication) {
+    if (authentication == null || !authentication.isAuthenticated()) {
+      return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+    }
+    String email = authentication.getName();
+
+    try {
+      // Service를 통해 이메일 기반으로 사용한 포인트 총합 조회
+      Integer usedPoints = pointHistoryService.getSumOfUsedPointsByStudentEmail(email);
+      return ResponseEntity.ok(usedPoints);
+    } catch (NoSuchElementException | NotFoundException e) {
+      // 학생을 찾지 못한 경우
+      return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+    }
+  }
+
+  /**
+   * 로그인된 학생의 출석을 체크하고 500 포인트를 지급.
+   * 이 엔드포인트는 Spring Security의 Authentication 객체를 사용하여
+   * 토큰 기반으로 인증된 사용자 본인에게만 포인트 거래 내역을 기록.
+   * * POST /api/point-history/student/me/attendance
+   * * @param authentication Spring Security의 인증 정보 (토큰에서 이메일 추출에 사용)
+   * @return 지급된 포인트 내역(PointHistoryRes) DTO와 200 OK 응답
+   */
+  @PostMapping("/student/me/attendance")
+  public ResponseEntity<PointHistoryRes> checkAttendance(Authentication authentication) {
+    if (authentication == null || !authentication.isAuthenticated()) {
+      return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+    }
+    // StudentService에서 이메일을 통해 ID를 찾아야 함.
+    String email = authentication.getName();
+    Long studentId = studentService.getStudentIdByEmail(email);
+
+    try {
+      PointHistory history = pointHistoryService.addAttendancePoint(studentId);
+      return ResponseEntity.ok(PointHistoryRes.fromEntity(history));
+    } catch (NoSuchElementException e) {
       return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
     }
   }

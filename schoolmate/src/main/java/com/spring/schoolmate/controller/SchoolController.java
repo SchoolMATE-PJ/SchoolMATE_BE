@@ -92,25 +92,32 @@ public class SchoolController {
     }
 
     // 시간표 조회 API
-    @Operation(summary = "주간 시간표 조회", description = "특정 날짜를 기준으로 해당 주(월~금)의 시간표를 조회합니다. 날짜 미입력 시 현재 주를 기준으로 조회합니다.")
+    @Operation(summary = "주간 시간표 조회", description = "특정 날짜를 기준으로 해당 주(월~금)의 시간표를 조회합니다.")
     @GetMapping("/timetable")
     public ResponseEntity<List<TimetableRes>> getMySchoolTimetable(
-            @AuthenticationPrincipal CustomStudentDetails customStudentDetails) {
+            @AuthenticationPrincipal CustomStudentDetails customStudentDetails,
+            @Parameter(description = "조회 기준 날짜 (YYYY-MM-DD 형식)", example = "2025-10-06") @RequestParam String date) {
 
         ProfileRes userProfile = profileService.getProfile(customStudentDetails.getStudent().getStudentId());
-        LocalDate today = LocalDate.now();
-        LocalDate monday = today.with(DayOfWeek.MONDAY);
-        LocalDate friday = today.with(DayOfWeek.FRIDAY);
 
+        // 1. 프론트에서 받은 날짜 문자열을 LocalDate 객체로 변환
+        LocalDate criteriaDate = LocalDate.parse(date);
+
+        // 2. 해당 날짜가 속한 주의 월요일과 금요일을 계산
+        LocalDate monday = criteriaDate.with(DayOfWeek.MONDAY);
+        LocalDate friday = criteriaDate.with(DayOfWeek.FRIDAY);
+
+        // 3. NEIS API가 요구하는 'yyyyMMdd' 형식으로 포맷
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyyMMdd");
         String startDate = monday.format(formatter);
         String endDate = friday.format(formatter);
 
+        // 4. NeisApiService 호출 (이 서비스는 수정할 필요 없음)
         List<TimetableRes> timetableList = neisApiService.getTimetable(
                 userProfile.getLevel(),
                 userProfile.getScCode(),
                 userProfile.getSchoolCode(),
-                startDate, // 시작일 (월요일)
+                startDate,
                 endDate,
                 String.valueOf(userProfile.getGrade()),
                 String.valueOf(userProfile.getClassNo()),

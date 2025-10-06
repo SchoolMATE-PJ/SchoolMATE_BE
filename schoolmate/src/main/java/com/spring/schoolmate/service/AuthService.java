@@ -15,9 +15,12 @@ import com.spring.schoolmate.entity.*;
 import com.spring.schoolmate.repository.*;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 
 import java.util.Collections;
 import java.util.List;
@@ -39,6 +42,10 @@ public class AuthService {
     private final StudentService studentService; // 주입
     private final ProfileService profileService;
     private final AllergyService allergyService;
+
+    private final StudentRepository studentRepository;
+    private final ProfileRepository profileRepository;
+    private final RoleRepository roleRepository;
 
     /**
      * 일반 회원가입을 처리하는 메소드
@@ -97,4 +104,23 @@ public class AuthService {
         // fromEntity 메소드를 수정해서 token을 함께 반환하도록 변경
         return ExternalSignUpRes.fromEntity(newStudent, newProfile, newExternalAccount, allergies, token);
     }
+
+    // 이메일 중복 확인 API
+    @Transactional
+    public boolean existCheckEmail(String email) {
+        return studentRepository.existsByEmail(email);
+    }
+
+    // 닉네임 중복 확인 API
+    @Transactional
+    public boolean existCheckNickname(String nickname) {
+        return profileRepository.existsByNickname(nickname);
+    }
+
+    // 전화번호 중복 확인 API
+    @Transactional
+    public boolean existCheckPhone(String phone) {
+        return profileRepository.existsByPhone(phone);
+    }
+
 }

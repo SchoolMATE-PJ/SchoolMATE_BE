@@ -23,8 +23,6 @@ import org.springframework.web.bind.annotation.*;
 public class AuthController {
 
     private final AuthService authService;
-    private final StudentRepository studentRepository;
-    private final ProfileRepository profileRepository;
 
     /**
      * 일반 회원가입
@@ -65,21 +63,31 @@ public class AuthController {
 
     // 이메일 중복 확인 API
     @GetMapping("/check-email")
-    public ResponseEntity<Boolean> checkEmail(@RequestParam String email) {
-        // existsByEmail은 boolean 값을 반환. 중복이면 true, 아니면 false
-        return ResponseEntity.ok(studentRepository.existsByEmail(email));
+    public ResponseEntity<?> checkEmail(@RequestParam String email) {
+        if (authService.existCheckEmail(email)) {
+            // 중복이면 409 Conflict (충돌) 상태 코드를 반환합니다.
+            return ResponseEntity.status(HttpStatus.CONFLICT).body("이미 사용 중인 이메일입니다.");
+        }
+        // 중복이 아니면 200 OK (성공) 상태 코드를 반환합니다.
+        return ResponseEntity.ok("사용 가능한 이메일입니다.");
     }
 
     // 닉네임 중복 확인 API
     @GetMapping("/check-nickname")
-    public ResponseEntity<Boolean> checkNickname(@RequestParam String nickname) {
-        return ResponseEntity.ok(profileRepository.existsByNickname(nickname));
+    public ResponseEntity<?> checkNickname(@RequestParam String nickname) {
+        if (authService.existCheckNickname(nickname)) {
+            return ResponseEntity.status(HttpStatus.CONFLICT).body("이미 사용 중인 닉네임입니다.");
+        }
+        return ResponseEntity.ok("사용 가능한 닉네임입니다.");
     }
 
     // 전화번호 중복 확인 API
     @GetMapping("/check-phone")
-    public ResponseEntity<Boolean> checkPhone(@RequestParam String phone) {
-        return ResponseEntity.ok(profileRepository.existsByPhone(phone));
+    public ResponseEntity<?> checkPhone(@RequestParam String phone) {
+        if (authService.existCheckPhone(phone)) {
+            return ResponseEntity.status(HttpStatus.CONFLICT).body("이미 등록된 전화번호입니다.");
+        }
+        return ResponseEntity.ok("사용 가능한 전화번호입니다.");
     }
 
 }

@@ -6,13 +6,12 @@ import com.spring.schoolmate.repository.ProductRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.multipart.MultipartFile; // 사용됨
+import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
 import java.util.List;
 import java.util.Optional;
 import java.util.Random;
-import java.util.UUID; // 사용됨
 
 @Service
 @RequiredArgsConstructor
@@ -21,7 +20,7 @@ public class ProductService {
   private final ProductRepository productRepository;
   private final FirebaseStorageService firebaseStorageService;
 
-  // 🚨 [추가] 상품명에 따라 상품 코드 접두사 및 카테고리 설정 로직 구현
+  // 상품명에 따라 상품 코드 접두사 및 카테고리 설정 로직 구현
   private String[] determineCategoryAndPrefix(String productName) {
     String prefix = "ETC";
     String category = "기타";
@@ -35,7 +34,7 @@ public class ProductService {
       prefix = "CS";
       category = "편의점";
     } else if (name.contains("배달의 민족") || name.contains("쿠팡이츠") || name.contains("요기요")) {
-      prefix = "BE"; // 프론트와 통일
+      prefix = "BE";
       category = "배달음식";
     } else if (name.contains("CGV") || name.contains("롯데시네마") || name.contains("메가박스") || name.contains("영화")) {
       prefix = "MO";
@@ -50,11 +49,12 @@ public class ProductService {
 
   /**
    * 상품 등록 (이미지 파일 포함)
+   * 프론트에서 교환 로직에 의해 DB에 등록되는 경우, 이 메서드는 관리자 수동 등록에만 사용됨
    * @return 등록된 상품 객체
    */
   @Transactional
   public Product registerProduct(Product product, MultipartFile file) {
-    // 상품 코드 및 카테고리 설정 로직 (기존 유지)
+    // 상품 코드 및 카테고리 설정 로직
     String productName = product.getProductName();
     String[] categoryInfo = determineCategoryAndPrefix(productName);
     String prefix = categoryInfo[0];
@@ -69,16 +69,13 @@ public class ProductService {
     } while (productRepository.findByProductCode(newProductCode) != null);
     product.setProductCode(newProductCode);
 
-    // [핵심] 이미지 처리 로직: Firebase Storage에 파일 업로드
+    // 이미지 처리 로직: Firebase Storage에 파일 업로드
     if (file != null && !file.isEmpty()) {
       try {
-        String imageUrl = firebaseStorageService.uploadFile(file); // Firebase에 업로드 및 URL 획득
-        product.setImageUrl(imageUrl); // 획득한 URL을 엔티티에 저장
-
+        String imageUrl = firebaseStorageService.uploadFile(file);
+        product.setImageUrl(imageUrl);
       } catch (IOException e) {
-        // 파일 I/O 오류 (업로드 실패)
         System.err.println("Firebase 파일 업로드 중 오류 발생: " + e.getMessage());
-        // 필요에 따라 RuntimeException을 던지거나, 트랜잭션 롤백을 고려
       }
     }
 
@@ -95,14 +92,17 @@ public class ProductService {
     if (optionalProduct.isPresent()) {
       Product existingProduct = optionalProduct.get();
 
-      // 1. 상품명 변경 시 카테고리 재설정 및 기본 필드 업데이트 (기존 유지)
-      // ... (기존 updateProduct 로직 유지)
+      // 1. 상품명 변경 시 카테고리 재설정 및 기본 필드 업데이트 (유지)
       String newProductName = updatedProduct.getProductName();
       existingProduct.setProductName(newProductName);
       String[] categoryInfo = determineCategoryAndPrefix(newProductName);
       existingProduct.setProductCategory(categoryInfo[1]);
       existingProduct.setProductPoints(updatedProduct.getProductPoints());
-      existingProduct.setExpirationDate(updatedProduct.getExpirationDate());
+
+      // 클라이언트에서 유효기간 필드를 보낸 경우에만 업데이트
+      if (updatedProduct.getExpirationDate() != null) {
+        existingProduct.setExpirationDate(updatedProduct.getExpirationDate());
+      }
       if (updatedProduct.getStock() != null) {
         existingProduct.setStock(updatedProduct.getStock());
       }
@@ -110,15 +110,15 @@ public class ProductService {
         existingProduct.setTotalQuantity(updatedProduct.getTotalQuantity());
       }
 
-      // 2. 이미지 수정 처리 로직
+      // 2. 이미지 수정 처리 로직 (유지)
       if (file != null && !file.isEmpty()) {
         try {
-          // 2-1. ⭐️ 기존 파일 삭제 (선택 사항: Storage 공간 절약)
+          // 2-1. 기존 파일 삭제
           if (existingProduct.getImageUrl() != null) {
             firebaseStorageService.deleteFile(existingProduct.getImageUrl());
           }
 
-          // 2-2. ⭐️ 새 파일 업로드 및 URL 업데이트
+          // 2-2. 새 파일 업로드 및 URL 업데이트
           String imageUrl = firebaseStorageService.uploadFile(file);
           existingProduct.setImageUrl(imageUrl);
 
@@ -126,18 +126,11 @@ public class ProductService {
           System.err.println("Firebase 파일 수정 처리 중 오류 발생: " + e.getMessage());
         }
       }
-      // 새 파일이 없으면 기존 imageUrl은 그대로 유지
 
       return productRepository.save(existingProduct);
     } else {
       throw new NotFoundException("상품을 찾을 수 없습니다: " + productId);
     }
-  }
-
-  // 파일 확장자 추출 헬퍼 메서드 (기존 유지)
-  private String getFileExtension(String fileName) {
-    int dotIndex = fileName.lastIndexOf('.');
-    return (dotIndex == -1) ? "" : fileName.substring(dotIndex + 1);
   }
 
   /**

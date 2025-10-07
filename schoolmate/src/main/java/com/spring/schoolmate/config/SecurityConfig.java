@@ -1,5 +1,6 @@
 package com.spring.schoolmate.config;
 
+import com.spring.schoolmate.exception.UserNotRegisteredException;
 import com.spring.schoolmate.jwt.JWTFilter;
 import com.spring.schoolmate.jwt.JWTUtil;
 import com.spring.schoolmate.jwt.LoginFilter;
@@ -7,6 +8,7 @@ import com.spring.schoolmate.jwt.OAuth2SuccessHandler;
 import com.spring.schoolmate.repository.AdminRepository;
 import com.spring.schoolmate.repository.StudentRepository;
 import com.spring.schoolmate.service.CustomOAuth2UserService;
+import com.spring.schoolmate.security.CustomAuthorizationRequestResolver;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.annotation.Bean;
@@ -17,13 +19,16 @@ import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.oauth2.client.registration.ClientRegistrationRepository;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.AuthenticationFailureHandler;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 import org.springframework.web.cors.CorsConfigurationSource;
-
+import org.springframework.web.util.UriComponentsBuilder;
 import java.util.Arrays;
+import java.util.Map;
 
 @EnableWebSecurity
 @Configuration
@@ -37,6 +42,7 @@ public class SecurityConfig {
     private final OAuth2SuccessHandler oAuth2SuccessHandler;
     private final StudentRepository studentRepository;
     private final AdminRepository adminRepository;
+    private final ClientRegistrationRepository clientRegistrationRepository;
 
     @Bean
     public AuthenticationManager authenticationManager(AuthenticationConfiguration configuration)
@@ -50,14 +56,21 @@ public class SecurityConfig {
         return new BCryptPasswordEncoder();
     }
 
+    // 1. Custom Authorization Request Resolver 빈 등록 (redirect-uri 처리)
     @Bean
-    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+    public CustomAuthorizationRequestResolver authorizationRequestResolver() {
+        String frontendRedirectUri = "http://localhost:3000/oauth-redirect";
+        return new CustomAuthorizationRequestResolver(clientRegistrationRepository, frontendRedirectUri);
+    }
+
+    @Bean
+    public SecurityFilterChain securityFilterChain(
+      HttpSecurity http,
+      CustomAuthorizationRequestResolver authorizationRequestResolver
+    ) throws Exception {
         log.info("SecurityFilterChain ===============>");
 
-        // LoginFilter 객체를 단 한 번만 생성
         LoginFilter loginFilter = new LoginFilter(authenticationManager(authenticationConfiguration), jwtUtil);
-        // LoginFilter 생성자에서 setFilterProcessesUrl("/api/auth/login")가 호출된다면 이 줄은 생략 가능
-        // loginFilter.setFilterProcessesUrl("/api/auth/login");
 
         // 1. CORS 설정
         http.cors(cors -> cors.configurationSource(corsConfigurationSource()));
@@ -71,37 +84,39 @@ public class SecurityConfig {
 
         // 4. URL별 접근 권한 설정
         http.authorizeHttpRequests(auth -> auth
-                // "/api/auth/**" 경로의 모든 요청은 인증 없이 허용 (회원가입, 로그인 등)
-                .requestMatchers(
-                        "/api/auth/**",
-                        "/oauth2/**",
-                        "/login/oauth2/code/kakao",
-                        "/swagger-ui/**",
-                        "/v3/api-docs/**",
-                        "/api/school/**",
-                        "/api/school-search/**").permitAll()
-                .requestMatchers("/admin").hasRole("ADMIN")
-                // 그 외의 모든 요청은 반드시 인증을 거쳐야 함
-                .anyRequest().authenticated());
+          .requestMatchers(
+            "/api/auth/**",
+            "/oauth2/**",
+            "/login/oauth2/code/**",
+            "/swagger-ui/**",
+            "/v3/api-docs/**",
+            "/api/school/**",
+            "/api/auth/signup/social",
+            "/api/school-search/**").permitAll()
+          .requestMatchers("/admin").hasRole("ADMIN")
+          .anyRequest().authenticated());
 
         // 5. 세션 관리 설정: 상태 없음(stateless)
         http.sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS));
 
         // 6. OAuth2 로그인 설정
         http.oauth2Login(oauth2 -> oauth2
+          .authorizationEndpoint(endpoint -> endpoint
+            .authorizationRequestResolver(authorizationRequestResolver) // Custom Resolver 사용
+            .baseUri("/oauth2/authorization")
+          )
           .userInfoEndpoint(userInfo -> userInfo
             .userService(customOAuth2UserService)
           )
           .successHandler(oAuth2SuccessHandler)
+          .failureHandler(oauth2AuthenticationFailureHandler())
+          .redirectionEndpoint(endpoint -> endpoint
+            .baseUri("/login/oauth2/code/*")
+          )
         );
 
-        // 7. 필터 등록 순서 정리 (중복 제거)
-
-        // LoginFilter를 기본 필터 자리에 등록
+        // 7. 필터 등록 순서 정리
         http.addFilterAt(loginFilter, UsernamePasswordAuthenticationFilter.class);
-
-        // JWTFilter를 LoginFilter보다 '앞에' 등록 (토큰 유효성 검사)
-        // JWTFilter는 AdminRepository를 주입받아야 함
         http.addFilterBefore(
           new JWTFilter(jwtUtil, studentRepository, adminRepository),
           LoginFilter.class
@@ -127,5 +142,35 @@ public class SecurityConfig {
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", configuration);
         return source;
+    }
+
+    // UserNotRegisteredException을 처리하여 /signup으로 리다이렉트하는 핸들러
+    @Bean
+    public AuthenticationFailureHandler oauth2AuthenticationFailureHandler() {
+        return (request, response, exception) -> {
+            if (exception instanceof UserNotRegisteredException) {
+                UserNotRegisteredException ex = (UserNotRegisteredException) exception;
+
+                Map<String, Object> attributes = ex.getAttributes();
+                String provider = ex.getProvider();
+
+                String tempToken = jwtUtil.createTempSignupToken(attributes, provider);
+
+                String email = ((Map<String, Object>) attributes.get("kakao_account")).get("email").toString();
+                String nickname = ((Map<String, Object>) attributes.get("properties")).get("nickname").toString();
+
+                String redirectUri = UriComponentsBuilder.fromUriString("http://localhost:3000/oauth-redirect")
+                  .queryParam("tempToken", tempToken)
+                  .queryParam("email", email)      // 💡 추가
+                  .queryParam("nickname", nickname) // 💡 추가
+                  .build()
+                  .encode() // 최종 빌드된 URI를 인코딩 (한글 파라미터 처리)
+                  .toUriString();
+
+                response.sendRedirect(redirectUri);
+            } else {
+                response.sendRedirect("/login?error");
+            }
+        };
     }
 }

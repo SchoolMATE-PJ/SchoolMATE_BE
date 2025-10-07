@@ -40,4 +40,19 @@ public class AllergyService {
         studentAllergyRepository.saveAll(studentAllergies);
         return allergies;
     }
+
+    /**
+     * 학생의 알레르기 정보를 수정 (기존 정보 삭제 후 새로 등록)
+     * @param student 정보를 수정할 학생 엔티티
+     * @param allergyIds 새로 등록할 알레르기 ID 목록
+     */
+    @Transactional
+    public void updateStudentAllergies(Student student, List<Integer> allergyIds) {
+        // 1. 기존 학생의 알레르기 정보를 모두 삭제
+        studentAllergyRepository.deleteAllByStudent(student);
+        studentAllergyRepository.flush(); // DB에 즉시 반영
+
+        // 2. 새로운 알레르기 정보를 등록 (기존 등록 메소드 재사용)
+        registerStudentAllergies(student, allergyIds);
+    }
 }

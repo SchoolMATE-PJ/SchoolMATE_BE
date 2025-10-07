@@ -65,31 +65,21 @@ public class NeisApiService {
      *  학교 구분(일반고/특성화고)에 따라 분기하여 학과 목록을 조회하는 메서드
      */
     public List<String> findMajorsBySchoolType(String educationOfficeCode, String schoolCode) {
-        // 1. 학교 기본 정보를 먼저 조회
-        SchoolInfoRow schoolInfo = getSchoolInfoRow(educationOfficeCode, schoolCode);
+        log.info("학교 종류에 따른 학과 목록 조회 시작: scCode={}, schoolCode={}", educationOfficeCode, schoolCode);
 
-        // 2. 조회된 정보가 없으면 빈 리스트 반환
-        if (schoolInfo == null || schoolInfo.getSchoolType() == null) {
-            log.warn("학교 정보를 찾을 수 없거나, 학교 유형이 지정되지 않았습니다. educationOfficeCode={}, schoolCode={}", educationOfficeCode, schoolCode);
-            // 또는 기본 로직으로 학과정보를 조회하도록 처리할 수도 있음
-            return getSchoolMajors(educationOfficeCode, schoolCode).stream()
-                    .map(SchoolMajorRow::getMajorName)
-                    .collect(Collectors.toList());
-        }
+        // [수정] getClassInfo 호출 시, 5개의 파라미터를 모두 전달합니다.
+        List<ClassInfoRow> classInfoRows = getClassInfo(educationOfficeCode, schoolCode, "1", "고등학교", null);
 
-        // 3. '일반고'인 경우 학급 정보에서 학과 목록을 추출
-        if ("일반고".equals(schoolInfo.getSchoolType())) {
+        if (classInfoRows.isEmpty()) {
+            log.warn("[학과 조회] 학급정보 API에서 학과를 찾을 수 없습니다. (특성화고일 수 있음) scCode={}, schoolCode={}", educationOfficeCode, schoolCode);
+            return Collections.emptyList();
+        } else {
             log.info("[일반고] 학급정보 API를 통해 학과 목록을 조회합니다.");
-            List<ClassInfoRow> classInfoRows = getClassInfo(educationOfficeCode, schoolCode, "1", null); // 1학년 기준으로 조회
             return classInfoRows.stream()
                     .map(ClassInfoRow::getMajorName)
+                    .filter(Objects::nonNull)
                     .distinct()
-                    .collect(Collectors.toList());
-        } else {
-            // 4. 특성화고 등 그 외 학교는 기존 학과정보 API를 사용
-            log.info("[특성화고/기타] 학과정보 API를 통해 학과 목록을 조회합니다.");
-            return getSchoolMajors(educationOfficeCode, schoolCode).stream()
-                    .map(SchoolMajorRow::getMajorName)
+                    .sorted()
                     .collect(Collectors.toList());
         }
     }
@@ -283,24 +273,28 @@ public class NeisApiService {
      * @param grade 학년
      * @return 검색된 반 정보 목록 (예: "1", "2", "3"...)
      */
-    public List<ClassInfoRow> getClassInfo(String educationOfficeCode,
-                                           String schoolCode,
-                                           String grade,
-                                           String majorName) {
-        // API는 현재 학년도(AY)를 필수로 요구합니다.
-        String currentYear = String.valueOf(LocalDate.now().getYear());
+    public List<ClassInfoRow> getClassInfo(String educationOfficeCode, String schoolCode, String grade, String schoolLevel, String majorName) {
+        log.info("학급정보 API 호출: scCode={}, schoolCode={}, grade={}, level={}, majorName={}",
+                educationOfficeCode, schoolCode, grade, schoolLevel, majorName);
 
-        String url = UriComponentsBuilder.fromUriString(baseUrl + classInfoPath)
+        UriComponentsBuilder builder = UriComponentsBuilder.fromUriString(baseUrl + classInfoPath)
                 .queryParam("KEY", apiKey)
                 .queryParam("Type", "json")
                 .queryParam("pIndex", 1)
                 .queryParam("pSize", 100)
                 .queryParam("ATPT_OFCDC_SC_CODE", educationOfficeCode)
                 .queryParam("SD_SCHUL_CODE", schoolCode)
-                .queryParam("AY", currentYear)
-                .queryParam("GRADE", grade)
-                .build(true)
-                .toUriString();
+                .queryParam("AY", String.valueOf(LocalDate.now().getYear()))
+                .queryParam("GRADE", grade);
+
+        // [핵심 수정!] 학교가 고등학교이고, 학과명이 '일반학과'가 아닐 경우에만 학과명 파라미터를 추가합니다.
+        if ("고등학교".equals(schoolLevel) && majorName != null && !majorName.isBlank() && !"일반학과".equals(majorName)) {
+            builder.queryParam("DDDEP_NM", majorName);
+            log.info("... '{}' 학과 필터링 파라미터 추가", majorName);
+        }
+
+        String url = builder.build().encode(StandardCharsets.UTF_8).toUriString();
+        log.info("... 최종 요청 URL: {}", url);
 
         ClassInfoRes response = webClient.get()
                 .uri(url)
@@ -308,23 +302,11 @@ public class NeisApiService {
                 .bodyToMono(ClassInfoRes.class)
                 .block();
 
-        if (response == null || response.getClassInfo() == null || response.getClassInfo().size() < 2) {
-            return Collections.emptyList();
-        }
-        List<ClassInfoRow> allClassList = response.getClassInfo().get(1).getRow();
-        if (allClassList == null) {
-            return Collections.emptyList();
+        if (response != null && response.getClassInfo() != null && !response.getClassInfo().isEmpty()) {
+            return response.getClassInfo().get(1).getRow();
         }
 
-        // majorName 파라미터가 있고, 비어있지 않다면 서버에서 필터링
-        if (majorName != null && !majorName.isBlank()) {
-            return allClassList.stream()
-                    // row.getDDDEP_NM()
-                    .filter(row -> majorName.equals(row.getMajorName()))
-                    .collect(Collectors.toList());
-        }
-        // majorName이 없으면 (일반고 등) 전체 목록 반환
-        return allClassList;
+        return Collections.emptyList();
     }
 
     /**

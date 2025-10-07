@@ -1,16 +1,19 @@
 package com.spring.schoolmate.controller;
 
+import com.spring.schoolmate.dto.student.PasswordUpdateReq;
 import com.spring.schoolmate.dto.student.StudentRes;
 import com.spring.schoolmate.entity.Student;
+import com.spring.schoolmate.security.CustomStudentDetails;
 import com.spring.schoolmate.service.StudentService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.web.bind.annotation.*;
 
 import java.util.NoSuchElementException;
 
@@ -18,6 +21,7 @@ import java.util.NoSuchElementException;
 @RequestMapping("/api/students")
 @RequiredArgsConstructor
 @Slf4j // 로깅 사용
+@Tag(name = "Students", description = "학생(사용자) 관련 API")
 public class StudentController {
 
   private final StudentService studentService;
@@ -53,4 +57,27 @@ public class StudentController {
       return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
     }
   }
+    @PutMapping("/password")
+    @Operation(summary = "비밀번호 변경", description = "로그인한 사용자의 비밀번호를 변경합니다.")
+    public ResponseEntity<String> updatePassword(
+            @AuthenticationPrincipal CustomStudentDetails customStudentDetails,
+            @RequestBody PasswordUpdateReq request) {
+
+        Long currentStudentId = customStudentDetails.getStudent().getStudentId();
+        studentService.updatePassword(currentStudentId, request);
+
+        return ResponseEntity.ok("비밀번호가 성공적으로 변경되었습니다.");
+    }
+
+    @DeleteMapping("/me")
+    @Operation(summary = "회원 탈퇴", description = "로그인한 사용자 본인의 계정을 삭제합니다.")
+    public ResponseEntity<String> deleteMyAccount(
+            @AuthenticationPrincipal CustomStudentDetails customStudentDetails) {
+
+        Long currentStudentId = customStudentDetails.getStudent().getStudentId();
+        studentService.deleteStudent(currentStudentId);
+
+        return ResponseEntity.ok("회원 탈퇴가 성공적으로 처리되었습니다.");
+    }
+
 }

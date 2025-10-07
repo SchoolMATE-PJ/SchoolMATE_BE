@@ -6,13 +6,17 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDate;
+import java.util.List;
 
 @Getter
 @NoArgsConstructor
 @Schema(description = "프로필 정보 수정 요청 DTO")
 public class ProfileUpdateReq {
 
-    @Schema(description = "새 닉네임", example = "새로운별명123")
+    @Schema(description = "새 이름")
+    private String name;
+
+    @Schema(description = "새 닉네임")
     private String nickname;
 
     @Schema(description = "성별", example = "MALE, FEMALE")
@@ -48,4 +52,7 @@ public class ProfileUpdateReq {
 
     @Schema(description = "반 번호")
     private Integer classNo;
+
+    @Schema(description = "수정할 알레르기 ID 목록")
+    private List<Integer> allergyId;
 }

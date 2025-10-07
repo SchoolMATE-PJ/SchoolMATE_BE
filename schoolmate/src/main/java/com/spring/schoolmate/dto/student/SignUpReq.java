@@ -5,6 +5,7 @@ import lombok.Getter;
 import lombok.Setter;
 
 import java.time.LocalDate;
+import java.util.List;
 
 @Getter
 @Setter
@@ -26,4 +27,7 @@ public class SignUpReq {
     private String level;
     private int grade;
     private int classNo;
+
+    // 알레르기 정보
+    private List<Integer> allergyId;
 }

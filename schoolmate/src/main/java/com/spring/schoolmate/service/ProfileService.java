@@ -1,11 +1,13 @@
 package com.spring.schoolmate.service;
 
+import com.spring.schoolmate.dto.profile.MyProfileRes;
 import com.spring.schoolmate.dto.profile.ProfileReq;
 import com.spring.schoolmate.dto.profile.ProfileRes;
 import com.spring.schoolmate.dto.profile.ProfileUpdateReq;
 import com.spring.schoolmate.entity.Profile;
 import com.spring.schoolmate.entity.Student;
 import com.spring.schoolmate.repository.ProfileRepository;
+import com.spring.schoolmate.repository.StudentRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -16,6 +18,8 @@ import org.springframework.transaction.annotation.Transactional;
 public class ProfileService {
 
     private final ProfileRepository profileRepository;
+    private final StudentRepository studentRepository;
+    private final AllergyService allergyService;
 
     /**
      * 프로필 정보를 저장
@@ -62,6 +66,7 @@ public class ProfileService {
      * @param studentId (JWT 토큰에서 추출한) 사용자 ID
      * @return 프로필 정보 응답 DTO
      */
+    @Transactional
     public ProfileRes getProfile(Long studentId) {
         Profile profile = profileRepository.findById(studentId)
                 .orElseThrow(() -> new IllegalArgumentException("프로필 정보를 찾을 수 없습니다."));
@@ -71,13 +76,26 @@ public class ProfileService {
     }
 
     /**
+     * '내 정보' 페이지를 위한 모든 정보 조회 (Student 정보 포함)
+     * @param studentId 사용자 ID
+     * @return MyProfileRes (이름, 이메일, 알레르기 등 모든 정보)
+     */
+    @Transactional(readOnly = true)
+    public MyProfileRes getMyProfileDetails(Long studentId) {
+        Profile profile = profileRepository.findById(studentId)
+                .orElseThrow(() -> new IllegalArgumentException("프로필 정보를 찾을 수 없습니다."));
+        // 새로운 통합 DTO인 MyProfileRes를 반환
+        return MyProfileRes.fromEntity(profile);
+    }
+
+    /**
      * 로그인한 사용자의 프로필 정보를 수정합니다.
      * @param studentId (JWT 토큰에서 추출한) 사용자 ID
      * @param req 수정할 전체 정보가 담긴 요청 DTO
      * @return 수정된 프로필 정보 응답 DTO
      */
     @Transactional
-    public ProfileRes updateProfile(Long studentId, ProfileUpdateReq req) {
+    public MyProfileRes updateProfile(Long studentId, ProfileUpdateReq req) {
         Profile profile = profileRepository.findById(studentId)
                 .orElseThrow(() -> new IllegalArgumentException("프로필 정보를 찾을 수 없습니다. ID: " + studentId));
 
@@ -95,11 +113,23 @@ public class ProfileService {
             }
         }
 
+        // Student 엔티티의 이름(name) 업데이트 ---
+        if (req.getName() != null) {
+            Student student = profile.getStudent();
+            student.setName(req.getName());
+        }
+
         // Profile 엔티티에 만들어 둔 update 메소드를 호출하여 정보 변경
         profile.update(req);
 
-        // 수정된 정보를 DTO로 변환하여 반환 (JPA의 더티 체킹에 의해 자동 저장됨)
-        return ProfileRes.fromEntity(profile);
-    }
+        // 알레르기 정보 업데이트
+        if (req.getAllergyId() != null) {
+            Student student = studentRepository.findById(studentId)
+                    .orElseThrow(() -> new IllegalArgumentException("학생 정보를 찾을 수 없습니다..."));
+            allergyService.updateStudentAllergies(student, req.getAllergyId());
+        }
 
+        // 수정된 정보를 DTO로 변환하여 반환 (JPA의 더티 체킹에 의해 자동 저장됨)
+        return MyProfileRes.fromEntity(profile);
+    }
 }

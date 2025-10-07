@@ -23,4 +23,7 @@ public interface StudentAllergyRepository extends JpaRepository<StudentAllergy, 
     // 학생이 보유한 알레르기 검색
     @Query("SELECT sa.allergy FROM StudentAllergy sa WHERE sa.student = :student")
     List<Allergy> findAllergiesByStudent(@Param("student") Student student);
+
+    // 특정 학생의 모든 알레르기 정보를 삭제하는 메소드
+    void deleteAllByStudent(Student student);
 }

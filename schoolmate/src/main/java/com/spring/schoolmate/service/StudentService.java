@@ -1,12 +1,15 @@
 package com.spring.schoolmate.service;
 
+import com.spring.schoolmate.dto.student.PasswordUpdateReq;
 import com.spring.schoolmate.dto.student.StudentReq;
 import com.spring.schoolmate.entity.Role;
 import com.spring.schoolmate.entity.Student;
 import com.spring.schoolmate.repository.ProfileRepository;
 import com.spring.schoolmate.repository.RoleRepository;
+import com.spring.schoolmate.repository.StudentAllergyRepository;
 import com.spring.schoolmate.repository.StudentRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -17,11 +20,14 @@ import java.util.Optional;
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true) // 클래스 레벨에서 기본적으로 읽기 전용 트랜잭션 설정
+@Slf4j
 public class StudentService {
 
     private final StudentRepository studentRepository;
     private final RoleRepository roleRepository;
     private final PasswordEncoder passwordEncoder;
+    private final ProfileRepository profileRepository;
+    private final StudentAllergyRepository studentAllergyRepository;
 
     /**
      * 학생(Student) 정보를 저장
@@ -104,4 +110,56 @@ public class StudentService {
         // 찾은 학생 엔티티에서 ID를 추출하여 반환합니다.
         return student.getStudentId();
     }
+
+    /**
+     * 사용자의 비밀번호를 변경합니다.
+     * @param studentId 현재 로그인된 사용자의 ID
+     * @param request 비밀번호 변경 요청 DTO
+     */
+    @Transactional
+    public void updatePassword(Long studentId, PasswordUpdateReq request) {
+        Student student = studentRepository.findById(studentId)
+                .orElseThrow(() -> new NoSuchElementException("학생 정보를 찾을 수 없습니다."));
+
+        // 1. 현재 비밀번호가 맞는지 확인
+        if (!passwordEncoder.matches(request.getCurrentPassword(), student.getPassword())) {
+            throw new IllegalArgumentException("현재 비밀번호가 일치하지 않습니다.");
+        }
+
+        // 2. 새 비밀번호로 변경 후 저장 (엔티티의 setter 호출 후 더티 체킹으로 자동 업데이트)
+        student.setPassword(passwordEncoder.encode(request.getNewPassword()));
+    }
+
+    /**
+     * 학생 정보를 삭제 (회원 탈퇴)
+     * @param studentId 삭제할 학생의 ID
+     */
+    @Transactional
+    public void deleteStudent(Long studentId) {
+
+        log.info(">>>>> 회원 탈퇴 서비스 시작 - Student ID: {}", studentId);
+        Student student = studentRepository.findById(studentId)
+                .orElseThrow(() -> {
+                    log.error("회원 탈퇴 실패: 존재하지 않는 학생 ID {}", studentId);
+                    return new NoSuchElementException("학생 정보를 찾을 수 없습니다.");
+                });
+
+        // 1. 연관된 알레르기 정보 삭제
+        log.info("... StudentAllergy 정보 삭제 Student ID: {}", studentId);
+        studentAllergyRepository.deleteAllByStudent(student);
+        log.info("... StudentAllergy 정보 삭제 완료. Student ID: {}", studentId);
+
+        // 2. 연관된 프로필 정보 삭제
+        log.info("... Profile 정보 삭제 중... Student ID: {}", studentId);
+        profileRepository.deleteById(studentId);
+        log.info("... Profile 정보 삭제 완료. Student ID: {}", studentId);
+
+        // 3. 학생(계정) 정보 최종 삭제
+        log.info("... Student 계정 정보 삭제 중... Student ID: {}", studentId);
+        studentRepository.delete(student);
+        log.info("... Student 계정 정보 삭제 완료. Student ID: {}", studentId);
+
+        log.info("<<<<< 회원 탈퇴 서비스 성공 - Student ID: {}", studentId);
+    }
+
 }

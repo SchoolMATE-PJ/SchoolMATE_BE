@@ -3,12 +3,12 @@ name: SchoolMATE Backend CI/CD to Google Cloud Run (Free Tier)
 on:
   push:
     branches:
-      - main # main 브랜치에 코드가 푸시될 때 실행된다.
+      - main
 
 env:
   PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
   AR_REPO_NAME: ${{ secrets.AR_REPO_NAME }}
-  SERVICE_NAME: schoolmate  # Cloud Run 서비스 이름 (스크린샷 기반)
+  SERVICE_NAME: schoolmate
   REGION: ${{ secrets.GCP_REGION }}
 
 jobs:
@@ -16,49 +16,47 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      # 1. 코드 체크아웃
       - name: Checkout Code
         uses: actions/checkout@v3
 
-      # 1. GCP 인증 (GCP_SA_KEY 사용)
+      # 2. GCP 인증
       - name: Authenticate to GCP
         uses: google-github-actions/auth@v2
         with:
-          # GitHub Secrets에 등록된 JSON 키 파일 전체 내용 사용
           credentials_json: ${{ secrets.GCP_SA_KEY }}
 
-      # 2. Docker 이미지 빌드 및 Artifact Registry로 푸시
-
-      # 2-1. Docker Tool 설정
+      # 3. Docker Buildx 설정
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      # 2-2. Artifact Registry에 Docker 로그인
-      # Artifact Registry 위치(REGION)와 프로젝트 ID를 사용하여 로그인
+      # 4. Artifact Registry 로그인
       - name: Configure Docker to use Artifact Registry
         run: gcloud auth configure-docker ${{ env.REGION }}-docker.pkg.dev
 
-      # 2-3. 이미지 빌드 및 푸시
+      # 5. Docker 이미지 빌드 및 푸시
       - name: Build and Push Docker Image
         uses: docker/build-push-action@v5
         with:
           context: .
           push: true
-          # Artifact Registry의 최종 이미지 태그를 생성: [REGION]-docker.pkg.dev/[PROJECT_ID]/[AR_REPO_NAME]/[SERVICE_NAME]:[COMMIT_SHA]
           tags: ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.AR_REPO_NAME }}/${{ env.SERVICE_NAME }}:${{ github.sha }}
 
-      # 3. Cloud Run에 배포
-      - name: Deploy to Cloud Run
+      # 6. Cloud Run 무료 티어 설정으로 배포
+      - name: Deploy to Cloud Run (Free Tier)
         uses: google-github-actions/deploy-cloudrun@v2
         with:
           service: ${{ env.SERVICE_NAME }}
           region: ${{ env.REGION }}
-          # 2단계에서 푸시한 이미지 사용
           image: ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.AR_REPO_NAME }}/${{ env.SERVICE_NAME }}:${{ github.sha }}
-          # DB 제거 후 prod 프로파일만 활성화
           env_vars: |
             SPRING_PROFILES_ACTIVE=prod
-          # Spring Boot 포트 9000으로 서비스 설정
-          # port: 9000
-          # 비용 제로를 위해 최소 인스턴스 0으로 설정 (트래픽 없을 때 종료)
-          min_instances: 0
-          # allow_unauthenticated: true # 공개 액세스 허용 (이미 Cloud Run에서 설정됨)
+          flags: >
+            --port=9000
+            --min-instances=0               # 트래픽 없을 때 완전 종료 (요금 0)
+            --max-instances=1               # 동시에 하나만 실행 (무료 티어 초과 방지)
+            --cpu=0.25                      # 최소 CPU (무료 티어 유지)
+            --memory=512Mi                  # 가벼운 서버 기준 (무료 티어 내)
+            --allow-unauthenticated         # 인증 없이 접근 허용 (API 공개용)
+            --concurrency=80                # 하나의 인스턴스당 요청 80개까지 처리 (효율 ↑)
+            --ingress=all                   # 모든 트래픽 허용 (기본 설정)

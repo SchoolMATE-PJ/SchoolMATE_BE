@@ -63,26 +63,41 @@ public class NeisApiService {
     private String classInfoPath;
 
     /**
-     *  학교 구분(일반고/특성화고)에 따라 분기하여 학과 목록을 조회하는 메서드
+     * 학교 구분(일반고/특성화고)에 따라 분기하여 학과 목록을 조회하는 메서드
      */
     public List<String> findMajorsBySchoolType(String educationOfficeCode, String schoolCode) {
         log.info("학교 종류에 따른 학과 목록 조회 시작: scCode={}, schoolCode={}", educationOfficeCode, schoolCode);
 
-        // [수정] getClassInfo 호출 시, 5개의 파라미터를 모두 전달합니다.
-        List<ClassInfoRow> classInfoRows = getClassInfo(educationOfficeCode, schoolCode, "1", "고등학교", null);
+        // 1. 특성화고 학과 정보 조회를 먼저 시도합니다.
+        List<SchoolMajorRow> majorRows = getSchoolMajors(educationOfficeCode, schoolCode);
 
-        if (classInfoRows.isEmpty()) {
-            log.warn("[학과 조회] 학급정보 API에서 학과를 찾을 수 없습니다. (특성화고일 수 있음) scCode={}, schoolCode={}", educationOfficeCode, schoolCode);
-            return Collections.emptyList();
-        } else {
-            log.info("[일반고] 학급정보 API를 통해 학과 목록을 조회합니다.");
-            return classInfoRows.stream()
-                    .map(ClassInfoRow::getMajorName)
+        // 2. 특성화고 학과 정보가 있으면 해당 정보를 가공하여 반환합니다.
+        if (majorRows != null && !majorRows.isEmpty()) {
+            log.info("[특성화고] schoolMajorInfo API를 통해 학과 목록을 조회합니다. ({}개)", majorRows.size());
+            return majorRows.stream()
+                    .map(SchoolMajorRow::getMajorName) // DTO에 학과명 필드가 DDDEP_NM 또는 유사한 이름일 수 있으니 확인 필요
                     .filter(Objects::nonNull)
                     .distinct()
                     .sorted()
                     .collect(Collectors.toList());
         }
+
+        // 3. 특성화고 학과 정보가 없으면, 일반고일 가능성을 염두에 두고 기존 로직을 실행합니다.
+        log.warn("[학과 조회] schoolMajorInfo API에서 학과를 찾을 수 없습니다. classInfo API로 재시도합니다. scCode={}, schoolCode={}", educationOfficeCode, schoolCode);
+        List<ClassInfoRow> classInfoRows = getClassInfo(educationOfficeCode, schoolCode, "1", "고등학교", null);
+
+        if (classInfoRows.isEmpty()) {
+            log.warn("[학과 조회] 모든 API에서 학과 정보를 찾지 못했습니다. scCode={}, schoolCode={}", educationOfficeCode, schoolCode);
+            return Collections.emptyList(); // 최종적으로 정보가 없으면 빈 리스트 반환
+        }
+
+        log.info("[일반고] classInfo API를 통해 학과 목록을 조회합니다.");
+        return classInfoRows.stream()
+                .map(ClassInfoRow::getMajorName)
+                .filter(Objects::nonNull)
+                .distinct()
+                .sorted()
+                .collect(Collectors.toList());
     }
 
     /**

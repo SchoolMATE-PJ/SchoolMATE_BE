@@ -47,7 +47,7 @@ public class SecurityConfig {
 
     @Bean
     public AuthenticationManager authenticationManager(AuthenticationConfiguration configuration)
-      throws Exception{
+            throws Exception{
         return configuration.getAuthenticationManager();
     }
 
@@ -114,8 +114,8 @@ public class SecurityConfig {
         // 7. 필터 등록 순서 정리
         http.addFilterAt(loginFilter, UsernamePasswordAuthenticationFilter.class);
         http.addFilterBefore(
-          new JWTFilter(jwtUtil, studentRepository, adminRepository),
-          LoginFilter.class
+                new JWTFilter(jwtUtil, studentRepository, adminRepository),
+                LoginFilter.class
         );
 
         return http.build();

@@ -112,6 +112,20 @@ public class SchoolController {
         String startDate = monday.format(formatter);
         String endDate = friday.format(formatter);
 
+        // ======================= [디버깅 로그 추가] =======================
+        log.info(">>>>> NEIS API 요청 파라미터 <<<<<");
+        log.info("   - 학교이름: {}", userProfile.getSchoolName());
+        log.info("   - 학교급: {}", userProfile.getLevel());
+        log.info("   - 교육청코드: {}", userProfile.getScCode());
+        log.info("   - 학교코드: {}", userProfile.getSchoolCode());
+        log.info("   - 시작일: {}", startDate);
+        log.info("   - 종료일: {}", endDate);
+        log.info("   - 학년: {}", userProfile.getGrade());
+        log.info("   - 반: {}", userProfile.getClassNo());
+        log.info("   - 학과명: '{}'", userProfile.getMajorName()); // 학과명에 공백이 있는지 확인하기 위해 ' '로 감쌈
+        // ===============================================================
+
+
         // 4. NeisApiService 호출 (이 서비스는 수정할 필요 없음)
         List<TimetableRes> timetableList = neisApiService.getTimetable(
                 userProfile.getLevel(),

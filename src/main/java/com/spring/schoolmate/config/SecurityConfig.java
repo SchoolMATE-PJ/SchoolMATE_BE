@@ -148,9 +148,10 @@ public class SecurityConfig {
 
         // 수정: 로컬 주소 제거 및 Vercel 주소의 불필요한 슬래시 제거, 와일드카드 사용 권장
         configuration.setAllowedOrigins(Arrays.asList(
-                LOCAL_FRONTEND_URL,
-                VERSEL_FRONTEND_URL,
-                LOCAL_BACKEND_URL
+          LOCAL_FRONTEND_URL,
+          VERSEL_FRONTEND_URL,
+          LOCAL_BACKEND_URL,
+          "https://*"
         ));
 
         // 또는 모든 도메인 허용 (Cloud Run에서 자주 사용됨):

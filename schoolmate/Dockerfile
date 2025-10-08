@@ -2,8 +2,7 @@
 
 # ----------------------------------------------------
 # 1단계: 빌드 (JDK 17)
-# 'jdk'를 사용하고 빌드 스테이지 이름을 'build'로 지정해야 합니다.
-FROM openjdk:17-jdk-slim-buster AS build
+FROM eclipse-temurin:17-jdk-alpine AS build
 
 # 빌드 작업 디렉토리를 /app으로 설정합니다. (복사 경로 통일)
 WORKDIR /app
@@ -25,8 +24,9 @@ RUN ./gradlew bootJar
 
 # ----------------------------------------------------
 # 2단계: 실행 (JRE 17)
-# 찾을 수 있었던 태그로 통일합니다.
-FROM openjdk:17-jre-slim-buster
+# 태그를 안정적인 eclipse-temurin으로 변경합니다.
+# FROM openjdk:17-jre-slim-buster
+FROM eclipse-temurin:17-jre-alpine
 
 EXPOSE 9000
 WORKDIR /app

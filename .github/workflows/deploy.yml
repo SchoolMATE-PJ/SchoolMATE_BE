@@ -52,7 +52,8 @@ jobs:
           env_vars: SPRING_PROFILES_ACTIVE=prod
           timeout: 300
 
-      # 7. 추가 런타임 설정 (무료 티어 세부 옵션 적용)
+      # 7. Cloud Run 세부 설정 업데이트 (무료 티어 최적화)
+      # 공개 접근 허용 (allow unauthenticated)
       - name: Update Cloud Run Settings (Free Tier)
         run: |
           gcloud run services update ${{ env.SERVICE_NAME }} \
@@ -64,5 +65,8 @@ jobs:
             --cpu 0.25 \
             --memory 512Mi \
             --concurrency 80 \
-            --ingress all \
-            --allow-unauthenticated
+            --ingress all
+          gcloud run services add-iam-policy-binding ${{ env.SERVICE_NAME }} \
+            --region ${{ env.REGION }} \
+            --member="allUsers" \
+            --role="roles/run.invoker"

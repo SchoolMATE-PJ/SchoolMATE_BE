@@ -15,6 +15,8 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.HashMap;
+import java.util.Map;
 import java.util.NoSuchElementException;
 
 @RestController
@@ -59,14 +61,20 @@ public class StudentController {
   }
     @PutMapping("/password")
     @Operation(summary = "비밀번호 변경", description = "로그인한 사용자의 비밀번호를 변경합니다.")
-    public ResponseEntity<String> updatePassword(
-            @AuthenticationPrincipal CustomStudentDetails customStudentDetails,
-            @RequestBody PasswordUpdateReq request) {
+    public ResponseEntity<Map<String, String>> updatePassword( // 1. 반환 타입을 Map으로 변경
+                                                               @AuthenticationPrincipal CustomStudentDetails customStudentDetails,
+                                                               @RequestBody PasswordUpdateReq request) {
 
+        log.info("password 변경 Controller 실행 >>>");
         Long currentStudentId = customStudentDetails.getStudent().getStudentId();
         studentService.updatePassword(currentStudentId, request);
 
-        return ResponseEntity.ok("비밀번호가 성공적으로 변경되었습니다.");
+        // 2. Map을 사용해 JSON 객체를 생성
+        Map<String, String> response = new HashMap<>();
+        response.put("message", "비밀번호가 성공적으로 변경되었습니다.");
+
+        // 3. 생성된 Map 객체를 반환
+        return ResponseEntity.ok(response);
     }
 
     @DeleteMapping("/me")

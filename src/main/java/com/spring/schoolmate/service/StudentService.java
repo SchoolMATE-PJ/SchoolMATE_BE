@@ -118,16 +118,26 @@ public class StudentService {
      */
     @Transactional
     public void updatePassword(Long studentId, PasswordUpdateReq request) {
-        Student student = studentRepository.findById(studentId)
-                .orElseThrow(() -> new NoSuchElementException("학생 정보를 찾을 수 없습니다."));
 
-        // 1. 현재 비밀번호가 맞는지 확인
+        log.info(">>>>> 비밀번호 변경 서비스 시작 - Student ID: {}", studentId);
+        Student student = studentRepository.findById(studentId)
+                .orElseThrow(() -> {
+                    log.error("비밀번호 변경 실패: 존재하지 않는 학생 ID {}", studentId);
+                    return new NoSuchElementException("학생 정보를 찾을 수 없습니다.");
+                });
+
+        // 1. 현재 비밀번호가 일치하는지 확인
         if (!passwordEncoder.matches(request.getCurrentPassword(), student.getPassword())) {
+            log.warn("비밀번호 변경 실패: 현재 비밀번호 불일치. Student ID: {}", studentId);
             throw new IllegalArgumentException("현재 비밀번호가 일치하지 않습니다.");
         }
 
-        // 2. 새 비밀번호로 변경 후 저장 (엔티티의 setter 호출 후 더티 체킹으로 자동 업데이트)
-        student.setPassword(passwordEncoder.encode(request.getNewPassword()));
+        // 2. 새 비밀번호를 암호화
+        String encodedNewPassword = passwordEncoder.encode(request.getNewPassword());
+
+        // 3. Repository에 'password' 필드만 업데이트하도록 명시적으로 요청
+        studentRepository.updatePassword(studentId, encodedNewPassword);
+        log.info(">>>>> 비밀번호 변경 서비스 완료 - Student ID: {}", studentId);
     }
 
     /**

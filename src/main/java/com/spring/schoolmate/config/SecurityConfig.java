@@ -101,9 +101,15 @@ public class SecurityConfig {
             "/api/school/**",
             "/api/auth/signup/social",
             "/api/school-search/**",
+<<<<<<< HEAD:schoolmate/src/main/java/com/spring/schoolmate/config/SecurityConfig.java
+                    "/api/students/**",
+                  "/api/profile/**"
+                  ).permitAll()
+=======
             "/api/students/**",
             "/api/profile/**"
             ).permitAll()
+>>>>>>> dev:src/main/java/com/spring/schoolmate/config/SecurityConfig.java
           .requestMatchers("/admin").hasRole("ADMIN")
           .anyRequest().authenticated());
 

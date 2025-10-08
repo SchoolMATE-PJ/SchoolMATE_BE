@@ -23,6 +23,7 @@ jobs:
       - name: Authenticate to GCP
         uses: google-github-actions/auth@v2
         with:
+          context: ./schoolmate
           # GitHub Secrets에 등록된 JSON 키 파일 전체 내용 사용
           credentials_json: ${{ secrets.GCP_SA_KEY }}
 

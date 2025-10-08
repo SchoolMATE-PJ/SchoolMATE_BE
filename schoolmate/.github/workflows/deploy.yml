@@ -23,7 +23,6 @@ jobs:
       - name: Authenticate to GCP
         uses: google-github-actions/auth@v2
         with:
-          context: ./schoolmate
           # GitHub Secrets에 등록된 JSON 키 파일 전체 내용 사용
           credentials_json: ${{ secrets.GCP_SA_KEY }}
 
@@ -42,7 +41,7 @@ jobs:
       - name: Build and Push Docker Image
         uses: docker/build-push-action@v5
         with:
-          context: .
+          context: ./schoolmate
           push: true
           # Artifact Registry의 최종 이미지 태그를 생성: [REGION]-docker.pkg.dev/[PROJECT_ID]/[AR_REPO_NAME]/[SERVICE_NAME]:[COMMIT_SHA]
           tags: ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.AR_REPO_NAME }}/${{ env.SERVICE_NAME }}:${{ github.sha }}

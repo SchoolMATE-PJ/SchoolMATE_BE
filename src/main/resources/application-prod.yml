@@ -28,7 +28,7 @@ spring:
         registration:
           kakao:
             # Vercel 배포 URL로 리다이렉트
-            redirect-uri: https://schoolmate-44907742353.us-south1.run.app/login/oauth2/code/kakao
+            redirect-uri: "{baseUrl}/login/oauth2/code/{registrationId}"
 
 firebase: # spring 블록에서 나와 최상위 레벨로 이동
   storage-bucket: "schoolmate-e3eef.firebasestorage.app"

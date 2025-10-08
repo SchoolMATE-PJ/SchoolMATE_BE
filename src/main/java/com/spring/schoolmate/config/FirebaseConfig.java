@@ -6,6 +6,7 @@ import com.google.firebase.FirebaseOptions;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Primary;
 import org.springframework.context.annotation.Profile;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.core.io.Resource;
@@ -23,19 +24,12 @@ public class FirebaseConfig {
     @Value("${firebase.storage-bucket}")
     private String storageBucket;
 
-    @Bean
-    public GoogleCredentials googleCredentials() throws IOException {
-        // 리소스 경로는 실제 json 파일 경로에 맞게 변경 (resources/firebase/... 식으로)
-        return GoogleCredentials.fromStream(
-                new ClassPathResource("config/schoolmate-e3eef-firebase-adminsdk-fbsvc-460de930d8.json").getInputStream()
-        );
-    }
-
     /**
      * Production 환경에서는 Cloud Run 서비스 계정 자동 인증을 사용.
      */
     @Bean
-    @Profile("prod") // prod 프로필에서만 이 빈을 생성
+    @Profile("prod")
+    @Primary // Prod 환경에서 우선적으로 사용
     public GoogleCredentials prodGoogleCredentials() throws IOException {
         // 배포 환경에서는 자동 인증 사용
         return GoogleCredentials.getApplicationDefault();
@@ -45,7 +39,8 @@ public class FirebaseConfig {
      * Local 환경에서는 키 파일을 사용하여 인증합니다.
      */
     @Bean
-    @Profile("local") // local 프로필에서만 이 빈을 생성
+    @Profile("local")
+    @Primary // Local 환경에서 우선적으로 사용
     public GoogleCredentials localGoogleCredentials() throws IOException {
         // 로컬 환경에서는 설정 파일의 경로를 사용
         Resource resource = new ClassPathResource(serviceAccountFile);

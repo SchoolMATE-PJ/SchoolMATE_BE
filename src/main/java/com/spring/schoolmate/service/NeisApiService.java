@@ -11,6 +11,7 @@ import org.springframework.web.util.UriComponentsBuilder;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Objects;
 import java.util.stream.Collectors;
@@ -277,24 +278,20 @@ public class NeisApiService {
         log.info("학급정보 API 호출: scCode={}, schoolCode={}, grade={}, level={}, majorName={}",
                 educationOfficeCode, schoolCode, grade, schoolLevel, majorName);
 
+        // [핵심 1] NEIS API에 요청할 때는 '학과(DDDEP_NM)' 파라미터를 아예 보내지 않습니다.
+        // 해당 학년의 모든 반 정보를 일단 전부 다 받아옵니다.
         UriComponentsBuilder builder = UriComponentsBuilder.fromUriString(baseUrl + classInfoPath)
                 .queryParam("KEY", apiKey)
                 .queryParam("Type", "json")
                 .queryParam("pIndex", 1)
-                .queryParam("pSize", 100)
+                .queryParam("pSize", 100) // 반 개수가 100개를 넘는 경우는 거의 없으므로 100으로 설정
                 .queryParam("ATPT_OFCDC_SC_CODE", educationOfficeCode)
                 .queryParam("SD_SCHUL_CODE", schoolCode)
                 .queryParam("AY", String.valueOf(LocalDate.now().getYear()))
                 .queryParam("GRADE", grade);
 
-        // [핵심 수정!] 학교가 고등학교이고, 학과명이 '일반학과'가 아닐 경우에만 학과명 파라미터를 추가합니다.
-        if ("고등학교".equals(schoolLevel) && majorName != null && !majorName.isBlank() && !"일반학과".equals(majorName)) {
-            builder.queryParam("DDDEP_NM", majorName);
-            log.info("... '{}' 학과 필터링 파라미터 추가", majorName);
-        }
-
         String url = builder.build().encode(StandardCharsets.UTF_8).toUriString();
-        log.info("... 최종 요청 URL: {}", url);
+        log.info("... 최종 요청 URL (학과 필터링 없음): {}", url);
 
         ClassInfoRes response = webClient.get()
                 .uri(url)
@@ -302,11 +299,37 @@ public class NeisApiService {
                 .bodyToMono(ClassInfoRes.class)
                 .block();
 
-        if (response != null && response.getClassInfo() != null && !response.getClassInfo().isEmpty()) {
-            return response.getClassInfo().get(1).getRow();
+        // API 응답이 없거나 비어있으면 빈 리스트 반환
+        if (response == null || response.getClassInfo() == null || response.getClassInfo().isEmpty() || response.getClassInfo().size() < 2) {
+            return Collections.emptyList();
         }
 
-        return Collections.emptyList();
+        // 전체 반 목록을 가져옴
+        List<ClassInfoRow> allClassRows = response.getClassInfo().get(1).getRow();
+        if (allClassRows == null || allClassRows.isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        // [핵심 2] 반 이름을 숫자  로 변환하여 오름차순으로 정렬합니다. (예: 1, 2, ... 10, 11)
+        allClassRows.sort(Comparator.comparingInt(row -> {
+            try {
+                return Integer.parseInt(row.getClassName());
+            } catch (NumberFormatException e) {
+                return 0; // 숫자로 변환할 수 없는 반 이름은 맨 앞으로 정렬
+            }
+        }));
+        log.info("... 반 목록 정렬 완료. ({}개)", allClassRows.size());
+
+        // [핵심 3] 고등학교이고 학과명이 주어진 경우, 백엔드에서 직접 필터링합니다.
+        if ("고등학교".equals(schoolLevel) && majorName != null && !majorName.isBlank()) {
+            log.info("... '{}' 학과로 필터링 시작", majorName);
+            return allClassRows.stream()
+                    .filter(row -> majorName.equals(row.getMajorName()))
+                    .collect(Collectors.toList());
+        }
+
+        // 초/중학교이거나, 고등학교지만 학과 필터링이 필요 없는 경우 정렬된 전체 목록 반환
+        return allClassRows;
     }
 
     /**

@@ -35,11 +35,11 @@ WORKDIR /app
 COPY --from=build /app/build/libs/*.jar app.jar
 
 # GCP 인증 문제 해결: config 폴더와 키 파일을 컨테이너 내부로 복사
-COPY src/main/resources/config /app/config
+# COPY src/main/resources/config /app/config
 
 # GCP Vision AI 및 Firebase 인증: 환경 변수로 키 파일 경로 지정
 # Cloud Run에서 이 경로를 자동으로 인식하여 인증.
-ENV GOOGLE_APPLICATION_CREDENTIALS=/app/config/gcp-service-account.json
+# ENV GOOGLE_APPLICATION_CREDENTIALS=/app/config/gcp-service-account.json
 
 # Spring Boot 앱의 포트를 9000으로 명시합니다.
 ENTRYPOINT ["java", "-jar", "app.jar"]

@@ -45,12 +45,6 @@ public class SecurityConfig {
     private final AdminRepository adminRepository;
     private final ClientRegistrationRepository clientRegistrationRepository;
 
-    // 상수로 프론트엔드 도메인 정의
-    private static final String LOCAL_FRONTEND_URL = "http://localhost:3000";
-    private static final String LOCAL_BACKEND_URL = "http://localhost:9000";
-    private static final String VERSEL_FRONTEND_URL = "https://schoolmate-fe.vercel.app";
-
-
     @Bean
     public AuthenticationManager authenticationManager(AuthenticationConfiguration configuration)
       throws Exception{
@@ -148,10 +142,11 @@ public class SecurityConfig {
 
         // 수정: 로컬 주소 제거 및 Vercel 주소의 불필요한 슬래시 제거, 와일드카드 사용 권장
         configuration.setAllowedOrigins(Arrays.asList(
-          LOCAL_FRONTEND_URL,
-          VERSEL_FRONTEND_URL,
-          LOCAL_BACKEND_URL,
-          "https://*"
+          "http://localhost:3000",
+          "http://localhost:9000",
+          "https://schoolmate-fe.vercel.app",
+          "https://*.vercel.app",  // Vercel 프리뷰 배포도 허용
+          "https://schoolmate-*.run.app"  // Cloud Run URL도 허용
         ));
 
         // 또는 모든 도메인 허용 (Cloud Run에서 자주 사용됨):

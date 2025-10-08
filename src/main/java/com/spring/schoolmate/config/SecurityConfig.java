@@ -45,6 +45,9 @@ public class SecurityConfig {
     private final AdminRepository adminRepository;
     private final ClientRegistrationRepository clientRegistrationRepository;
 
+    private static final String LOCAL_FRONTEND_URL = "http://localhost:3000";
+    private static final String VERSEL_FRONTEND_URL = "https://schoolmate-fe.vercel.app/";
+
     @Bean
     public AuthenticationManager authenticationManager(AuthenticationConfiguration configuration)
       throws Exception{
@@ -141,7 +144,7 @@ public class SecurityConfig {
         CorsConfiguration configuration = new CorsConfiguration();
 
         // 수정: 로컬 주소 제거 및 Vercel 주소의 불필요한 슬래시 제거, 와일드카드 사용 권장
-        configuration.setAllowedOrigins(Arrays.asList(
+        configuration.setAllowedOriginPatterns(Arrays.asList(
           "http://localhost:3000",
           "http://localhost:9000",
           "https://schoolmate-fe.vercel.app",

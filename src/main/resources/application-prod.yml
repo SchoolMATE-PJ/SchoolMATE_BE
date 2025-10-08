@@ -1,11 +1,9 @@
-# src/main/resources/application-prod.yml
-
 spring:
   profiles:
     active: prod
 
   # ===================================================
-  # Database (Datasource & JPA) Configuration - H2 인메모리 DB 사용 (Free Tier 유지)
+  # Database (Datasource & JPA) Configuration - H2 인메모리 DB 사용
   # ===================================================
   datasource:
     # H2 드라이버 사용: Cloud Run에 별도 DB 인스턴스 구축 없이 JPA 사용 가능
@@ -29,24 +27,8 @@ spring:
       client:
         registration:
           kakao:
-            # Vercel 배포 URL로 리다이렉트 (이전에 확인된 값 유지)
+            # Vercel 배포 URL로 리다이렉트
             redirect-uri: https://schoolmate-fe.vercel.app/oauth-redirect
 
-    # Database (Datasource & JPA) Configuration
-    datasource:
-      driver-class-name: org.h2.Driver
-      url: jdbc:h2:mem:schoolmatedb
-      username: sa
-      password: password
-    jpa:
-      database: h2
-      database-platform: org.hibernate.dialect.H2Dialect
-      hibernate:
-        ddl-auto: update
-      show-sql: false # 배포 환경에서는 false 권장
-      generate-ddl: true
-
-
-  # Firebase Configuration
-  firebase:
-    storage-bucket: "schoolmate-e3eef.firebasestorage.app"
+firebase: # spring 블록에서 나와 최상위 레벨로 이동
+  storage-bucket: "schoolmate-e3eef.firebasestorage.app"

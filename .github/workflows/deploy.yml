@@ -42,28 +42,27 @@ jobs:
           push: true
           tags: ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.AR_REPO_NAME }}/${{ env.SERVICE_NAME }}:${{ github.sha }}
 
-      # 6. Cloud Run 무료 티어 설정으로 배포
-      - name: Deploy to Cloud Run (Free Tier)
+      # 6. Cloud Run에 기본 이미지 배포 (필수 인자만 사용)
+      - name: Deploy to Cloud Run
         uses: google-github-actions/deploy-cloudrun@v2
         with:
           service: ${{ env.SERVICE_NAME }}
           region: ${{ env.REGION }}
           image: ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.AR_REPO_NAME }}/${{ env.SERVICE_NAME }}:${{ github.sha }}
-          env_vars: |
-            SPRING_PROFILES_ACTIVE=prod
-          # 트래픽 없을 때 완전 종료 (요금 0)
-          # 동시에 하나만 실행 (무료 티어 초과 방지)
-          # 최소 CPU (무료 티어 유지)
-          # 가벼운 서버 기준 (무료 티어 내)
-          # 인증 없이 접근 허용 (API 공개용)
-          # 하나의 인스턴스당 요청 80개까지 처리 (효율 ↑)
-          # 모든 트래픽 허용 (기본 설정)
-          flags: >
-            --port=9000
-            --min-instances=0
-            --max-instances=1
-            --cpu=0.25
-            --memory=512Mi
+          env_vars: SPRING_PROFILES_ACTIVE=prod
+          timeout: 300
+
+      # 7. 추가 런타임 설정 (무료 티어 세부 옵션 적용)
+      - name: Update Cloud Run Settings (Free Tier)
+        run: |
+          gcloud run services update ${{ env.SERVICE_NAME }} \
+            --region ${{ env.REGION }} \
+            --project ${{ env.PROJECT_ID }} \
+            --port 9000 \
+            --min-instances 0 \
+            --max-instances 1 \
+            --cpu 0.25 \
+            --memory 512Mi \
+            --concurrency 80 \
+            --ingress all \
             --allow-unauthenticated
-            --concurrency=80
-            --ingress=all

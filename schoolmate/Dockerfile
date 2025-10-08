@@ -2,7 +2,11 @@
 
 # ----------------------------------------------------
 # 1단계: 빌드 (JDK 17)
-FROM openjdk:17-jdk-slim AS build
+# 'jdk'를 사용하고 빌드 스테이지 이름을 'build'로 지정해야 합니다.
+FROM openjdk:17-jdk-slim-buster AS build
+
+# 빌드 작업 디렉토리를 /app으로 설정합니다. (복사 경로 통일)
+WORKDIR /app
 
 # Gradle wrapper와 설정 파일 복사
 COPY gradlew .
@@ -21,12 +25,13 @@ RUN ./gradlew bootJar
 
 # ----------------------------------------------------
 # 2단계: 실행 (JRE 17)
-FROM openjdk:17-jre-slim
+# 찾을 수 있었던 태그로 통일합니다.
+FROM openjdk:17-jre-slim-buster
 
 EXPOSE 9000
 WORKDIR /app
 
-# 빌드된 JAR 파일 복사
+# 빌드된 JAR 파일 복사 (1단계에서 WORKDIR을 /app으로 설정했으므로 경로 수정)
 COPY --from=build /app/build/libs/*.jar app.jar
 
 # GCP 인증 문제 해결: config 폴더와 키 파일을 컨테이너 내부로 복사
@@ -36,4 +41,5 @@ COPY src/main/resources/config /app/config
 # Cloud Run에서 이 경로를 자동으로 인식하여 인증.
 ENV GOOGLE_APPLICATION_CREDENTIALS=/app/config/gcp-service-account.json
 
+# Spring Boot 앱의 포트를 9000으로 명시합니다.
 ENTRYPOINT ["java", "-jar", "app.jar"]

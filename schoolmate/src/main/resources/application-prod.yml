@@ -1,0 +1,15 @@
+# src/main/resources/application-prod.yml
+
+spring:
+  profiles:
+    active: prod
+
+  # Database (Datasource & JPA) Configuration - 제거 (Firestore/Datastore 사용)
+
+  security:
+    oauth2:
+      client:
+        registration:
+          kakao:
+            # Vercel 프론트엔드 URL로 리다이렉트
+            redirect-uri: https://schoolmate-fe.vercel.app/oauth-redirect

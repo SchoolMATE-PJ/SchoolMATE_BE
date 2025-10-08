@@ -1,0 +1,33 @@
+# 로컬 개발용
+
+spring:
+  profiles:
+    active: local
+
+  # ===================================================
+  # Database (Datasource & JPA) Configuration - 로컬 환경에서만 사용
+  # ===================================================
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: jdbc:mysql://localhost:3306/kosa?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC&characterEncoding=UTF-8
+    username: root
+    password: 12341234
+  jpa:
+    database: mysql
+    database-platform: org.hibernate.dialect.MySQL8Dialect
+    hibernate:
+      ddl-auto: update # 로컬 DB 업데이트
+    show-sql: true
+    generate-ddl: true
+    properties:
+      hibernate:
+        format_sql: true
+        enable_lazy_load_no_trans: true
+
+  # 카카오 로컬 Redirect URI
+  security:
+    oauth2:
+      client:
+        registration:
+          kakao:
+            redirect-uri: http://localhost:9000/login/oauth2/code/kakao

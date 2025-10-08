@@ -92,7 +92,10 @@ public class SecurityConfig {
             "/v3/api-docs/**",
             "/api/school/**",
             "/api/auth/signup/social",
-            "/api/school-search/**").permitAll()
+            "/api/school-search/**",
+                    "/api/students/**",
+                  "/api/profile/**"
+                  ).permitAll()
           .requestMatchers("/admin").hasRole("ADMIN")
           .anyRequest().authenticated());
 

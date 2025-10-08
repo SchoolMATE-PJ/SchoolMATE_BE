@@ -1,5 +1,3 @@
-# 로컬 개발용
-
 spring:
   # ===================================================
   # Database (Datasource & JPA) Configuration - 로컬 환경에서만 사용

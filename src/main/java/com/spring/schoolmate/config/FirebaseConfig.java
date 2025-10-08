@@ -23,6 +23,14 @@ public class FirebaseConfig {
     @Value("${firebase.storage-bucket}")
     private String storageBucket;
 
+    @Bean
+    public GoogleCredentials googleCredentials() throws IOException {
+        // 리소스 경로는 실제 json 파일 경로에 맞게 변경 (resources/firebase/... 식으로)
+        return GoogleCredentials.fromStream(
+                new ClassPathResource("config/schoolmate-e3eef-firebase-adminsdk-fbsvc-460de930d8.json").getInputStream()
+        );
+    }
+
     /**
      * Production 환경에서는 Cloud Run 서비스 계정 자동 인증을 사용.
      */

@@ -66,3 +66,8 @@ dependencies {
 
 
 }
+
+bootRun {
+  // bootRun 실행 시 기본적으로 local 프로필을 활성화.
+  systemProperty 'spring.profiles.active', 'local'
+}

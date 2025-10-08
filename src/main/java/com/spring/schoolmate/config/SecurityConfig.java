@@ -150,7 +150,8 @@ public class SecurityConfig {
         configuration.setAllowedOrigins(Arrays.asList(
           LOCAL_FRONTEND_URL,
           VERSEL_FRONTEND_URL,
-          LOCAL_BACKEND_URL
+          LOCAL_BACKEND_URL,
+          "https://*"
         ));
 
         // 또는 모든 도메인 허용 (Cloud Run에서 자주 사용됨):

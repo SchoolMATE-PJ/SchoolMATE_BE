@@ -2,21 +2,23 @@ package com.spring.schoolmate.entity;
 
 import jakarta.persistence.*;
 import lombok.Getter;
+import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 @Entity
-@Getter
-@Setter
+@Table(name = "role")
+@Getter @Setter
+@NoArgsConstructor
 public class Role {
 
-    @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
+    // 🚨 [오류 해결] illegal start of expression 오류를 일으키는 필드 제거
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Integer roleId;
 
-    // Enumerated(EnumType.STRING) :: Enum 타입을 문자열 자체로 DB에 저장
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
+    @Column(name = "role_name", nullable = false)
     private RoleType roleName;
-
-    // RoleType Enum으로 정의
-    public enum RoleType { ADMIN, STUDENT}
+    public enum RoleType { STUDENT, ADMIN, TEMP_USER }
 }

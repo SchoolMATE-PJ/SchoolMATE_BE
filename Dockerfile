@@ -16,6 +16,9 @@ COPY settings.gradle .
 # 소스 코드 복사
 COPY src src
 
+# gradlew 스크립트에 실행 권한 부여
+RUN chmod +x ./gradlew
+
 # Gradle 캐시 파일 다운로드 (빌드 속도 향상)
 RUN ./gradlew dependencies
 

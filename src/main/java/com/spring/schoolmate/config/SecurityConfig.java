@@ -9,6 +9,7 @@ import com.spring.schoolmate.repository.AdminRepository;
 import com.spring.schoolmate.repository.StudentRepository;
 import com.spring.schoolmate.service.CustomOAuth2UserService;
 import com.spring.schoolmate.security.CustomAuthorizationRequestResolver;
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.annotation.Bean;
@@ -44,6 +45,11 @@ public class SecurityConfig {
     private final AdminRepository adminRepository;
     private final ClientRegistrationRepository clientRegistrationRepository;
 
+    // 상수로 프론트엔드 도메인 정의
+    private static final String LOCAL_FRONTEND_URL = "http://localhost:3000";
+    private static final String VERSEL_FRONTEND_URL = "https://schoolmate-fe.vercel.app";
+
+
     @Bean
     public AuthenticationManager authenticationManager(AuthenticationConfiguration configuration)
       throws Exception{
@@ -59,6 +65,8 @@ public class SecurityConfig {
     // 1. Custom Authorization Request Resolver 빈 등록 (redirect-uri 처리)
     @Bean
     public CustomAuthorizationRequestResolver authorizationRequestResolver() {
+        // 이 URI는 백엔드 서버의 URL을 따라가므로 그대로 둔다.
+        // Spring Security가 런타임에 base URL을 결정.
         String frontendRedirectUri = "http://localhost:3000/oauth-redirect";
         return new CustomAuthorizationRequestResolver(clientRegistrationRepository, frontendRedirectUri);
     }
@@ -92,7 +100,10 @@ public class SecurityConfig {
             "/v3/api-docs/**",
             "/api/school/**",
             "/api/auth/signup/social",
-            "/api/school-search/**").permitAll()
+            "/api/school-search/**",
+            "/api/students/**",
+            "/api/profile/**"
+            ).permitAll()
           .requestMatchers("/admin").hasRole("ADMIN")
           .anyRequest().authenticated());
 
@@ -109,6 +120,7 @@ public class SecurityConfig {
             .userService(customOAuth2UserService)
           )
           .successHandler(oAuth2SuccessHandler)
+          // CustomFailureHandler는 요청을 받으므로 RequestResolver를 넘긴다.
           .failureHandler(oauth2AuthenticationFailureHandler())
           .redirectionEndpoint(endpoint -> endpoint
             .baseUri("/login/oauth2/code/*")
@@ -127,12 +139,21 @@ public class SecurityConfig {
 
 
     /**
-     * CORS 설정을 위한 Bean입니다.
+     * CORS 설정.
      */
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        configuration.setAllowedOrigins(Arrays.asList("http://localhost:3000", "https://schoolmate-fe.vercel.app/"));
+
+        // 수정: 로컬 주소 제거 및 Vercel 주소의 불필요한 슬래시 제거, 와일드카드 사용 권장
+        configuration.setAllowedOrigins(Arrays.asList(
+          LOCAL_FRONTEND_URL,
+          VERSEL_FRONTEND_URL
+        ));
+
+        // 또는 모든 도메인 허용 (Cloud Run에서 자주 사용됨):
+        // configuration.setAllowedOriginPatterns(Arrays.asList("*"));
+
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"));
         configuration.setAllowCredentials(true);
         configuration.setAllowedHeaders(Arrays.asList("*"));
@@ -151,20 +172,28 @@ public class SecurityConfig {
             if (exception instanceof UserNotRegisteredException) {
                 UserNotRegisteredException ex = (UserNotRegisteredException) exception;
 
+                // 1. 리다이렉트할 베이스 URL 동적 결정
+                String frontendBaseUrl = getFrontendBaseUrl(request);
+
                 Map<String, Object> attributes = ex.getAttributes();
                 String provider = ex.getProvider();
 
                 String tempToken = jwtUtil.createTempSignupToken(attributes, provider);
 
-                String email = ((Map<String, Object>) attributes.get("kakao_account")).get("email").toString();
-                String nickname = ((Map<String, Object>) attributes.get("properties")).get("nickname").toString();
+                // 2. 카카오 계정 정보 추출
+                Map<String, Object> kakaoAccount = (Map<String, Object>) attributes.get("kakao_account");
+                Map<String, Object> properties = (Map<String, Object>) attributes.get("properties");
 
-                String redirectUri = UriComponentsBuilder.fromUriString("http://localhost:3000/oauth-redirect")
+                String email = kakaoAccount != null && kakaoAccount.containsKey("email") ? kakaoAccount.get("email").toString() : null;
+                String nickname = properties != null && properties.containsKey("nickname") ? properties.get("nickname").toString() : null;
+
+                // 3. 최종 리다이렉트 URI 생성 (동적 URL 사용)
+                String redirectUri = UriComponentsBuilder.fromUriString(frontendBaseUrl + "/oauth-redirect") // 베이스 URL 동적 결정
                   .queryParam("tempToken", tempToken)
-                  .queryParam("email", email)      // 💡 추가
-                  .queryParam("nickname", nickname) // 💡 추가
+                  .queryParam("email", email)
+                  .queryParam("nickname", nickname)
                   .build()
-                  .encode() // 최종 빌드된 URI를 인코딩 (한글 파라미터 처리)
+                  .encode()
                   .toUriString();
 
                 response.sendRedirect(redirectUri);
@@ -172,5 +201,30 @@ public class SecurityConfig {
                 response.sendRedirect("/login?error");
             }
         };
+    }
+
+    /**
+     * 요청의 Host 또는 Origin 헤더를 기반으로 리다이렉트할 기본 URL을 결정.
+     * OAuth2SuccessHandler에 있는 로직을 재사용.
+     */
+    private String getFrontendBaseUrl(HttpServletRequest request) {
+        String origin = request.getHeader("Origin");
+        String referer = request.getHeader("Referer");
+
+        // Vercel에서 요청이 왔는지 확인
+        if (origin != null && origin.contains("vercel")) {
+            return VERSEL_FRONTEND_URL;
+        }
+
+        if (referer != null && referer.contains("vercel")) {
+            return VERSEL_FRONTEND_URL;
+        }
+
+        // 로컬 환경인지 확인
+        if (request.getServerName().contains("localhost") || request.getServerName().equals("127.0.0.1")) {
+            return LOCAL_FRONTEND_URL;
+        }
+
+        return VERSEL_FRONTEND_URL; // 기본적으로 배포 환경을 가정
     }
 }

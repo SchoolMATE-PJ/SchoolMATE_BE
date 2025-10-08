@@ -50,7 +50,7 @@ public class SecurityConfig {
 
     @Bean
     public AuthenticationManager authenticationManager(AuthenticationConfiguration configuration)
-      throws Exception{
+            throws Exception{
         return configuration.getAuthenticationManager();
     }
 
@@ -71,8 +71,8 @@ public class SecurityConfig {
 
     @Bean
     public SecurityFilterChain securityFilterChain(
-      HttpSecurity http,
-      CustomAuthorizationRequestResolver authorizationRequestResolver
+            HttpSecurity http,
+            CustomAuthorizationRequestResolver authorizationRequestResolver
     ) throws Exception {
         log.info("SecurityFilterChain ===============>");
 
@@ -90,46 +90,46 @@ public class SecurityConfig {
 
         // 4. URL별 접근 권한 설정
         http.authorizeHttpRequests(auth -> auth
-          .requestMatchers(
-            "/api/auth/**",
-            "/oauth2/**",
-            "/login/oauth2/code/**",
-            "/swagger-ui/**",
-            "/v3/api-docs/**",
-            "/api/school/**",
-            "/api/auth/signup/social",
-            "/api/school-search/**",
-            "/api/students/**",
-            "/api/profile/**"
-            ).permitAll()
-          .requestMatchers("/admin").hasRole("ADMIN")
-          .anyRequest().authenticated());
+                .requestMatchers(
+                        "/api/auth/**",
+                        "/oauth2/**",
+                        "/login/oauth2/code/**",
+                        "/swagger-ui/**",
+                        "/v3/api-docs/**",
+                        "/api/school/**",
+                        "/api/auth/signup/social",
+                        "/api/school-search/**",
+                        "/api/students/**",
+                        "/api/profile/**"
+                ).permitAll()
+                .requestMatchers("/admin").hasRole("ADMIN")
+                .anyRequest().authenticated());
 
         // 5. 세션 관리 설정: 상태 없음(stateless)
         http.sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS));
 
         // 6. OAuth2 로그인 설정
         http.oauth2Login(oauth2 -> oauth2
-          .authorizationEndpoint(endpoint -> endpoint
-            .authorizationRequestResolver(authorizationRequestResolver) // Custom Resolver 사용
-            .baseUri("/oauth2/authorization")
-          )
-          .userInfoEndpoint(userInfo -> userInfo
-            .userService(customOAuth2UserService)
-          )
-          .successHandler(oAuth2SuccessHandler)
-          // CustomFailureHandler는 요청을 받으므로 RequestResolver를 넘긴다.
-          .failureHandler(oauth2AuthenticationFailureHandler())
-          .redirectionEndpoint(endpoint -> endpoint
-            .baseUri("/login/oauth2/code/*")
-          )
+                .authorizationEndpoint(endpoint -> endpoint
+                        .authorizationRequestResolver(authorizationRequestResolver) // Custom Resolver 사용
+                        .baseUri("/oauth2/authorization")
+                )
+                .userInfoEndpoint(userInfo -> userInfo
+                        .userService(customOAuth2UserService)
+                )
+                .successHandler(oAuth2SuccessHandler)
+                // CustomFailureHandler는 요청을 받으므로 RequestResolver를 넘긴다.
+                .failureHandler(oauth2AuthenticationFailureHandler())
+                .redirectionEndpoint(endpoint -> endpoint
+                        .baseUri("/login/oauth2/code/*")
+                )
         );
 
         // 7. 필터 등록 순서 정리
         http.addFilterAt(loginFilter, UsernamePasswordAuthenticationFilter.class);
         http.addFilterBefore(
-          new JWTFilter(jwtUtil, studentRepository, adminRepository),
-          LoginFilter.class
+                new JWTFilter(jwtUtil, studentRepository, adminRepository),
+                LoginFilter.class
         );
 
         return http.build();
@@ -190,12 +190,12 @@ public class SecurityConfig {
 
                 // 3. 최종 리다이렉트 URI 생성 (동적 URL 사용)
                 String redirectUri = UriComponentsBuilder.fromUriString(frontendBaseUrl + "/oauth-redirect") // 베이스 URL 동적 결정
-                  .queryParam("tempToken", tempToken)
-                  .queryParam("email", email)
-                  .queryParam("nickname", nickname)
-                  .build()
-                  .encode()
-                  .toUriString();
+                        .queryParam("tempToken", tempToken)
+                        .queryParam("email", email)
+                        .queryParam("nickname", nickname)
+                        .build()
+                        .encode()
+                        .toUriString();
 
                 response.sendRedirect(redirectUri);
             } else {

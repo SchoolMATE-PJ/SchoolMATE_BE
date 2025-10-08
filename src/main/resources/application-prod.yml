@@ -30,4 +30,23 @@ spring:
         registration:
           kakao:
             # Vercel 배포 URL로 리다이렉트 (이전에 확인된 값 유지)
-            redirect-uri: https://schoolmate-fe.vercel.app/oauth-redirect #
+            redirect-uri: https://schoolmate-fe.vercel.app/oauth-redirect
+
+    # Database (Datasource & JPA) Configuration
+    datasource:
+      driver-class-name: org.h2.Driver
+      url: jdbc:h2:mem:schoolmatedb
+      username: sa
+      password: password
+    jpa:
+      database: h2
+      database-platform: org.hibernate.dialect.H2Dialect
+      hibernate:
+        ddl-auto: update
+      show-sql: false # 배포 환경에서는 false 권장
+      generate-ddl: true
+
+
+  # Firebase Configuration
+  firebase:
+    storage-bucket: "schoolmate-e3eef.firebasestorage.app"

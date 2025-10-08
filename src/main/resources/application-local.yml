@@ -31,3 +31,7 @@ spring:
         registration:
           kakao:
             redirect-uri: http://localhost:9000/login/oauth2/code/kakao
+
+  firebase:
+    service-account-file: config/schoolmate-e3eef-firebase-adminsdk-fbsvc-460de930d8.json
+    storage-bucket: "schoolmate-e3eef.firebasestorage.app"

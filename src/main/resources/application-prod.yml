@@ -1,0 +1,34 @@
+spring:
+  profiles:
+    active: prod
+
+  # ===================================================
+  # Database (Datasource & JPA) Configuration - H2 인메모리 DB 사용
+  # ===================================================
+  datasource:
+    # H2 드라이버 사용: Cloud Run에 별도 DB 인스턴스 구축 없이 JPA 사용 가능
+    driver-class-name: org.h2.Driver
+    url: jdbc:h2:mem:schoolmatedb
+    username: sa
+    password: password
+  jpa:
+    database: h2
+    database-platform: org.hibernate.dialect.H2Dialect
+    hibernate:
+      ddl-auto: update # 스키마 자동 생성 (데이터는 인스턴스 종료 시 휘발)
+    show-sql: false
+    generate-ddl: true
+
+  # ===================================================
+  # 카카오 배포 Redirect URI
+  # ===================================================
+  security:
+    oauth2:
+      client:
+        registration:
+          kakao:
+            # Vercel 배포 URL로 리다이렉트
+            redirect-uri: https://schoolmate-fe.vercel.app/oauth-redirect
+
+firebase: # spring 블록에서 나와 최상위 레벨로 이동
+  storage-bucket: "schoolmate-e3eef.firebasestorage.app"

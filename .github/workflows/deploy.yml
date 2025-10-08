@@ -1,0 +1,72 @@
+name: SchoolMATE Backend CI/CD to Google Cloud Run (Free Tier)
+
+on:
+  push:
+    branches:
+      - main
+
+env:
+  PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+  AR_REPO_NAME: ${{ secrets.AR_REPO_NAME }}
+  SERVICE_NAME: schoolmate
+  REGION: ${{ secrets.GCP_REGION }}
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1. 코드 체크아웃
+      - name: Checkout Code
+        uses: actions/checkout@v3
+
+      # 2. GCP 인증
+      - name: Authenticate to GCP
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      # 3. Docker Buildx 설정
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      # 4. Artifact Registry 로그인
+      - name: Configure Docker to use Artifact Registry
+        run: gcloud auth configure-docker ${{ env.REGION }}-docker.pkg.dev
+
+      # 5. Docker 이미지 빌드 및 푸시
+      - name: Build and Push Docker Image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          tags: ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.AR_REPO_NAME }}/${{ env.SERVICE_NAME }}:${{ github.sha }}
+
+      # 6. Cloud Run에 기본 이미지 배포 (필수 인자만 사용)
+      - name: Deploy to Cloud Run
+        uses: google-github-actions/deploy-cloudrun@v2
+        with:
+          service: ${{ env.SERVICE_NAME }}
+          region: ${{ env.REGION }}
+          image: ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.AR_REPO_NAME }}/${{ env.SERVICE_NAME }}:${{ github.sha }}
+          env_vars: SPRING_PROFILES_ACTIVE=prod
+          timeout: 300
+
+      # 7. Cloud Run 세부 설정 업데이트 (무료 티어 최적화)
+      # 공개 접근 허용 (allow unauthenticated)
+      - name: Update Cloud Run Settings (Free Tier)
+        run: |
+          gcloud run services update ${{ env.SERVICE_NAME }} \
+            --region ${{ env.REGION }} \
+            --project ${{ env.PROJECT_ID }} \
+            --port 9000 \
+            --min-instances 0 \
+            --max-instances 1 \
+            --cpu 0.25 \
+            --memory 512Mi \
+            --concurrency 1 \
+            --ingress all
+          gcloud run services add-iam-policy-binding ${{ env.SERVICE_NAME }} \
+            --region ${{ env.REGION }} \
+            --member="allUsers" \
+            --role="roles/run.invoker"

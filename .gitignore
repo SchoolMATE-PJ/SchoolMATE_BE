@@ -1,0 +1,49 @@
+# --------------------------------------------------------------------------------
+# Gradle 및 빌드 결과물
+# --------------------------------------------------------------------------------
+.gradle/
+build/
+out/
+!gradle/wrapper/gradle-wrapper.jar
+!**/src/main/**/build/
+!**/src/test/**/build/
+!**/src/main/**/out/
+!**/src/test/**/out/
+
+# --------------------------------------------------------------------------------
+# IDE 설정 파일
+# --------------------------------------------------------------------------------
+### IntelliJ IDEA ###
+.idea
+*.iws
+*.iml
+*.ipr
+
+### STS & Eclipse ###
+.apt_generated
+.classpath
+.factorypath
+.project
+.settings
+.springBeans
+.sts4-cache
+bin/
+
+### NetBeans ###
+/nbproject/private/
+/nbbuild/
+/dist/
+/nbdist/
+/.nb-gradle/
+
+### VS Code ###
+.vscode/
+
+# macOS 및 기타 시스템 파일
+.DS_Store
+HELP.md # 빌드와 관련 없는 문서 파일
+
+# 절대 Git에 커밋되면 안 되는 민감한 키 파일 (Firebase / GCP Vision AI)
+# --------------------------------------------------------------------------------
+# 모든 서비스 계정 키 파일을 'config' 폴더 기준으로 제외.
+src/main/resources/config/*.json

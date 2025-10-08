@@ -75,6 +75,8 @@ public class LoginFilter extends UsernamePasswordAuthenticationFilter {
             return;
         }
 
+        responseBody.put("token", token);
+
         // 응답 설정
         response.addHeader("Authorization", "Bearer " + token);
         response.setContentType("application/json;charset=UTF-8");

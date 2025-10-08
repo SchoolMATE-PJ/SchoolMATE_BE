@@ -58,7 +58,7 @@ jobs:
           env_vars: |
             SPRING_PROFILES_ACTIVE=prod
           # Spring Boot 포트 9000으로 서비스 설정
-          port: 9000
+          # port: 9000
           # 비용 제로를 위해 최소 인스턴스 0으로 설정 (트래픽 없을 때 종료)
           min_instances: 0
-          allow_unauthenticated: true # 공개 액세스 허용 (이미 Cloud Run에서 설정됨)
+          # allow_unauthenticated: true # 공개 액세스 허용 (이미 Cloud Run에서 설정됨)

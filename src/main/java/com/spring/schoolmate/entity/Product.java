@@ -32,7 +32,7 @@ public class Product {
   @Column(nullable = false)
   private Integer productPoints;
 
-  @Column(nullable = false)
+  @Column(name = "expiration_date", nullable = true)
   private LocalDate expirationDate;
 
   @Column(nullable = false)

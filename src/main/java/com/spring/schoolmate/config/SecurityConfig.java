@@ -26,7 +26,7 @@ import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.util.UriComponentsBuilder;
-import java.util.Arrays;
+import java.util.List;
 import java.util.Map;
 
 @EnableWebSecurity
@@ -43,11 +43,11 @@ public class SecurityConfig {
     private final AdminRepository adminRepository;
 
     private static final String LOCAL_FRONTEND_URL = "http://localhost:3000";
-    private static final String VERSEL_FRONTEND_URL = "https://schoolmate-fe.vercel.app"; // 슬래시 제거
+    private static final String VERSEL_FRONTEND_URL = "https://schoolmate-fe.vercel.app";
 
     @Bean
     public AuthenticationManager authenticationManager(AuthenticationConfiguration configuration)
-            throws Exception{
+      throws Exception{
         return configuration.getAuthenticationManager();
     }
 
@@ -57,15 +57,13 @@ public class SecurityConfig {
         return new BCryptPasswordEncoder();
     }
 
-    // CustomAuthorizationRequestResolver 제거 - application.yml의 {baseUrl}을 사용하도록 함
-
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         log.info("SecurityFilterChain ===============>");
 
         LoginFilter loginFilter = new LoginFilter(authenticationManager(authenticationConfiguration), jwtUtil);
 
-        // 1. CORS 설정
+        // 1. CORS 설정 (corsConfigurationSource Bean 사용)
         http.cors(cors -> cors.configurationSource(corsConfigurationSource()));
 
         // 2. CSRF 보호 기능 비활성화
@@ -95,10 +93,9 @@ public class SecurityConfig {
         // 5. 세션 관리 설정: 상태 없음(stateless)
         http.sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS));
 
-        // 6. OAuth2 로그인 설정 - CustomAuthorizationRequestResolver 제거
+        // 6. OAuth2 로그인 설정
         http.oauth2Login(oauth2 -> oauth2
           .authorizationEndpoint(endpoint -> endpoint
-            // authorizationRequestResolver 제거 - application.yml의 {baseUrl} 사용
             .baseUri("/oauth2/authorization")
           )
           .userInfoEndpoint(userInfo -> userInfo
@@ -114,31 +111,28 @@ public class SecurityConfig {
         // 7. 필터 등록 순서 정리
         http.addFilterAt(loginFilter, UsernamePasswordAuthenticationFilter.class);
         http.addFilterBefore(
-                new JWTFilter(jwtUtil, studentRepository, adminRepository),
-                LoginFilter.class
+          new JWTFilter(jwtUtil, studentRepository, adminRepository),
+          LoginFilter.class
         );
 
         return http.build();
     }
 
-    /**
-     * CORS 설정.
-     */
+    // -----------------------------------------------------
+    // CORS 설정: Access-Control-Allow-Origin 헤더를 추가합니다.
+    // -----------------------------------------------------
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
 
-        configuration.setAllowedOriginPatterns(Arrays.asList(
-          "http://localhost:3000",
-          "http://localhost:9000",
-          "https://schoolmate-fe.vercel.app",
-          "https://*.vercel.app",  // Vercel 프리뷰 배포도 허용
-          "https://*.run.app"  // Cloud Run URL도 허용
+        configuration.setAllowedOrigins(List.of(
+          LOCAL_FRONTEND_URL, // http://localhost:3000
+          VERSEL_FRONTEND_URL // 배포 환경 URL
         ));
 
-        configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"));
+        configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"));
         configuration.setAllowCredentials(true);
-        configuration.setAllowedHeaders(Arrays.asList("*"));
+        configuration.setAllowedHeaders(List.of("*"));
         configuration.setMaxAge(3600L);
         configuration.addExposedHeader("Authorization");
 
@@ -147,7 +141,7 @@ public class SecurityConfig {
         return source;
     }
 
-    // UserNotRegisteredException을 처리하여 /signup으로 리다이렉트하는 핸들러
+    // ... (oauth2AuthenticationFailureHandler 및 getFrontendBaseUrl 메서드는 그대로 유지)
     @Bean
     public AuthenticationFailureHandler oauth2AuthenticationFailureHandler() {
         return (request, response, exception) -> {

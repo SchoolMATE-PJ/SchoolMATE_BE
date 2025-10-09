@@ -1,6 +1,9 @@
 # ===================================================
-# Server & Application Configuration
+# application-local.yml (Local Environment Configuration)
+# 이 설정 파일은 Spring Boot 실행 시 local 프로파일을 활성화할 때 사용됩니다.
+# 예: java -jar app.jar --spring.profiles.active=local
 # ===================================================
+
 server:
   port: 9000
   servlet:
@@ -8,8 +11,10 @@ server:
       charset: UTF-8
 
 spring:
-  profile:
-    active: prod
+  # 기본적으로 local 프로파일을 활성화합니다.
+  profiles:
+    active: local
+
   application:
     name: SchoolMATE
 
@@ -21,7 +26,27 @@ spring:
     expiration-time: "#{60 * 60 * 1000}" # 1시간
 
   # ===================================================
-  # Spring Security OAuth2 Client Configuration
+  # Database (Datasource & JPA) Configuration - 로컬 MySQL
+  # ===================================================
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: jdbc:mysql://localhost:3306/kosa?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC&characterEncoding=UTF-8
+    username: root
+    password: 12341234
+  jpa:
+    database: mysql
+    database-platform: org.hibernate.dialect.MySQL8Dialect
+    hibernate:
+      ddl-auto: update # 로컬 DB 스키마 업데이트
+    show-sql: true # 쿼리 출력
+    generate-ddl: true
+    properties:
+      hibernate:
+        format_sql: true # 쿼리 포맷팅
+        enable_lazy_load_no_trans: true
+
+  # ===================================================
+  # Spring Security OAuth2 Client Configuration - Kakao (로컬 Redirect URI)
   # ===================================================
   security:
     oauth2:
@@ -31,6 +56,7 @@ spring:
             client-name: Kakao
             client-id: f71b4c3a397902b27c666e262e974e86
             client-secret: J2uxIYX3pfaY6pShm31bwG85whCeMR2e
+            # 로컬 개발 환경 Redirect URI (포트 9000 기준)
             redirect-uri: http://localhost:9000/login/oauth2/code/kakao
             authorization-grant-type: authorization_code
             scope:
@@ -45,29 +71,8 @@ spring:
             user-name-attribute: id
 
   # ===================================================
-  # Database (Datasource & JPA) Configuration
+  # Springdoc OpenAPI (Swagger) Configuration
   # ===================================================
-  datasource:
-    driver-class-name: com.mysql.cj.jdbc.Driver
-    url: jdbc:mysql://localhost:3306/kosa?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC&characterEncoding=UTF-8
-    username: root
-    password: 1234
-
-  jpa:
-    database: mysql
-    database-platform: org.hibernate.dialect.MySQL8Dialect
-    hibernate:
-      ddl-auto: update
-    show-sql: true
-    generate-ddl: true
-    properties:
-      hibernate:
-        format_sql: true
-        enable_lazy_load_no_trans: true
-
-# ===================================================
-# Springdoc OpenAPI (Swagger) Configuration
-# ===================================================
 springdoc:
   api-docs:
     path: /api-docs
@@ -81,8 +86,8 @@ springdoc:
 # ===================================================
 neis:
   api-key: b79f732043e047e5adaa8b6f57a8dba8
-  base-url: https://open.neis.go.kr/hub # 나이스 API 기본 URL
-  path: # 각 서비스별 상세 경로
+  base-url: https://open.neis.go.kr/hub
+  path:
     school-info: /schoolInfo
     meal-service: /mealServiceDietInfo
     his-timetable: /hisTimetable
@@ -92,11 +97,19 @@ neis:
     class-info: /classInfo
     school-major: /schoolMajorinfo
 
+# ===================================================
+# Application Custom Properties
+# ===================================================
 app:
   admin:
     email: admin@schoolmate.com
-    password: 1234  # 초기화 로직에서 BCrypt로 인코딩될 평문 비밀번호
+    password: 1234
 
+# ===================================================
+# Firebase Configuration (Local)
+# ===================================================
 firebase:
-  service-account-file: config/schoolmate-e3eef-firebase-adminsdk-fbsvc-460de930d8.json
+  project-id: schoolmate-e3eef
+  # 로컬에서 실행하기 위한 서비스 계정 파일 경로
+  service-account-file: config/schoolmate-e3eef-firebase-adminsdk-fbsvc-3f69d7a684.json
   storage-bucket: "schoolmate-e3eef.firebasestorage.app"

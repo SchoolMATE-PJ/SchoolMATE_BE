@@ -98,4 +98,12 @@ public class Profile {
         if (req.getLevel() != null) this.level = req.getLevel();
         if (req.getClassNo() != null) this.classNo = req.getClassNo();
     }
+
+    /**
+     * 프로필 이미지 URL을 업데이트.
+     * @param imageUrl 새로 업로드된 URL 또는 삭제 시 null
+     */
+    public void updateProfileImageUrl(String imageUrl) {
+        this.profileImgUrl = imageUrl;
+    }
 }

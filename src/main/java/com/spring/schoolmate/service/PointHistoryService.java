@@ -2,9 +2,6 @@
 
 package com.spring.schoolmate.service;
 
-// 💡 import java.security.Timestamp 삭제 (오류 발생)
-// 💡 import java.util.Date 삭제 (사용되지 않음)
-
 import com.spring.schoolmate.dto.pointhistory.PointHistoryReq;
 import com.spring.schoolmate.entity.PointHistory;
 import com.spring.schoolmate.entity.Student;
@@ -65,7 +62,7 @@ public class PointHistoryService {
     Integer newBalance = currentBalance + history.getAmount();
 
     if (newBalance < 0) {
-      // 🚨 잔액 부족 오류 발생 시 메시지를 포함하여 throw
+      // 잔액 부족 오류 발생 시 메시지를 포함하여 throw
       throw new IllegalArgumentException("포인트 잔액이 부족하여 거래를 기록할 수 없습니다. 필요한 포인트: " + (-history.getAmount()));
     }
 
@@ -144,7 +141,7 @@ public class PointHistoryService {
 
   /**
    * 학생의 이메일을 기반으로 포인트 거래를 기록. (관리자 지급/차감 등 일반 거래 기록)
-   * 🚨 PointHistoryController에서 호출하는 메서드입니다.
+   * PointHistoryController에서 호출하는 메서드.
    */
   @Transactional
   public PointHistory recordTransactionByStudentEmail(String email, PointHistory history) {

@@ -2,6 +2,7 @@ package com.spring.schoolmate.dto.profile;
 
 import com.spring.schoolmate.entity.Profile;
 import com.spring.schoolmate.entity.Profile.Gender;
+import com.spring.schoolmate.entity.Student;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.*;
 
@@ -28,8 +29,18 @@ public class ProfileRes {
     private Integer classNo;
     private String profileImgUrl;
 
+    // 관리자 페이지 학생 정보를 불러오기 위한 필드 추가
+    private String name; // Student 엔터티의 name
+    private Integer pointBalance; // Student 엔터티의 pointBalance
+
     public static ProfileRes fromEntity(Profile profile) {
+
+        Student student = profile.getStudent();
+
         return ProfileRes.builder()
+                // Student 엔터티에서 name과 pointBalance를 가져옴
+                .name(student.getName())
+                .pointBalance(student.getPointBalance())
                 .studentId(profile.getStudentId())
                 .nickname(profile.getNickname())
                 .gender(profile.getGender())

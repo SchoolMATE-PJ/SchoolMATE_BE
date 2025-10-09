@@ -1,5 +1,6 @@
 package com.spring.schoolmate.entity;
 
+import com.spring.schoolmate.dto.admin.AdminProfileUpdateReq;
 import com.spring.schoolmate.dto.profile.ProfileUpdateReq;
 import jakarta.persistence.*;
 import lombok.*;
@@ -105,5 +106,21 @@ public class Profile {
      */
     public void updateProfileImageUrl(String imageUrl) {
         this.profileImgUrl = imageUrl;
+    }
+
+    /**
+     * 관리자 요청에 따라 프로필 정보(학년/반/전화번호)를 업데이트.
+     */
+    public void updateByAdmin(AdminProfileUpdateReq req) {
+        if (req.getGrade() != null) {
+            this.grade = req.getGrade(); // 학년 업데이트
+        }
+        if (req.getClassNo() != null) {
+            this.classNo = req.getClassNo(); // 반 업데이트
+        }
+        // phone, nickname 등 다른 필드도 여기서 처리
+        if (req.getPhone() != null && !req.getPhone().isEmpty()) {
+            this.phone = req.getPhone();
+        }
     }
 }

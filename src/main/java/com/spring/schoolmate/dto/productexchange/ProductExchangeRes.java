@@ -1,30 +1,33 @@
+// /com/spring/schoolmate/dto/productexchange/ProductExchangeRes.java 파일
+
 package com.spring.schoolmate.dto.productexchange;
 
 import com.spring.schoolmate.entity.ProductExchange;
 import lombok.Builder;
 import lombok.Getter;
-import lombok.Setter;
 
-import java.util.Date;
+import java.time.LocalDateTime; // ⭐️ import 변경
 
 @Getter
-@Setter
 @Builder
 public class ProductExchangeRes {
-  private Integer productExchangeId;
-  private String studentName; // 학생 이름
-  private String productName; // 상품명
-  private Integer productPoints; // 상품 포인트
-  private Date exchangeDate; // 교환 일자
-  private String exchangeCardStatus; // 교환 상태
 
-  public static ProductExchangeRes fromEntity(ProductExchange productExchange) {
+  private final Integer productExchangeId;
+  private final String productName;
+  private final String productCode;
+  // ⭐️ Date 타입을 LocalDateTime으로 변경 ⭐️
+  private final LocalDateTime exchangeDate;
+  private final LocalDateTime expirationDate;
+  private final String exchangeCardStatus;
+
+  public static ProductExchangeRes from(ProductExchange productExchange) {
     return ProductExchangeRes.builder()
       .productExchangeId(productExchange.getProductExchangeId())
-      .studentName(productExchange.getStudent().getName())
       .productName(productExchange.getProduct().getProductName())
-      .productPoints(productExchange.getProduct().getProductPoints())
+      .productCode(productExchange.getProduct().getProductCode())
+      // ⭐️ 오류가 발생한 부분: LocalDateTime 객체를 그대로 사용 ⭐️
       .exchangeDate(productExchange.getExchangeDate())
+      .expirationDate(productExchange.getExpirationDate())
       .exchangeCardStatus(productExchange.getExchangeCardStatus())
       .build();
   }

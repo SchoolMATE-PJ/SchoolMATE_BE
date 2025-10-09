@@ -1,8 +1,12 @@
 package com.spring.schoolmate.entity;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.google.firebase.database.annotations.NotNull;
 import jakarta.persistence.*;
 import lombok.*;
+import org.springframework.data.annotation.CreatedDate;
+
+import java.time.LocalDateTime;
 import java.util.Date;
 
 @Builder
@@ -31,8 +35,13 @@ public class ProductExchange {
   // @JsonIgnore // 👈 이 어노테이션을 반드시 제거해야 상품 정보가 JSON 응답에 포함됨
   private Product product; // 상품 엔터티
 
-  @Column(nullable = false)
-  private Date exchangeDate; // 상품 교환 일자
+  @CreatedDate // 교환 시점에 자동으로 현재 날짜/시간으로 설정됩니다.
+  @Column(name = "exchange_date", nullable = false, updatable = false)
+  private LocalDateTime exchangeDate;
+
+  @NotNull // 이 테이블에서는 만료일이 필수입니다.
+  @Column(name = "expiration_date", nullable = false)
+  private LocalDateTime expirationDate;
 
   @Column(nullable = true)
   private Date usageDate; // 상품 사용 일자 (이름 변경: usedDate 대신 usageDate 사용)

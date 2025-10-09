@@ -73,9 +73,9 @@ public class NeisApiService {
 
         // 2. 특성화고 학과 정보가 있으면 해당 정보를 가공하여 반환합니다.
         if (majorRows != null && !majorRows.isEmpty()) {
-            log.info("[특성화고] schoolMajorInfo API를 통해 학과 목록을 조회합니다. ({}개)", majorRows.size());
+            log.info("schoolMajorInfo API를 통해 학과 목록을 조회합니다. ({}개)", majorRows.size());
             return majorRows.stream()
-                    .map(SchoolMajorRow::getMajorName) // DTO에 학과명 필드가 DDDEP_NM 또는 유사한 이름일 수 있으니 확인 필요
+                    .map(SchoolMajorRow::getMajorName)
                     .filter(Objects::nonNull)
                     .distinct()
                     .sorted()

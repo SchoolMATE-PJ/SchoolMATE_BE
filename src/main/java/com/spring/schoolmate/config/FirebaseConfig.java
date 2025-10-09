@@ -24,6 +24,10 @@ public class FirebaseConfig {
     @Value("${firebase.storage-bucket}")
     private String storageBucket;
 
+    // Firebase 프로젝트 ID 필드 추가 및 주입
+    @Value("${firebase.project-id}")
+    private String projectId;
+
     /**
      * Production 환경에서는 Cloud Run 서비스 계정 자동 인증을 사용.
      */
@@ -56,6 +60,7 @@ public class FirebaseConfig {
         if (FirebaseApp.getApps().isEmpty()) {
             FirebaseOptions options = FirebaseOptions.builder()
                     .setCredentials(credentials)
+                    .setProjectId(projectId)
                     .setStorageBucket(storageBucket)
                     .build();
             return FirebaseApp.initializeApp(options);
@@ -73,6 +78,7 @@ public class FirebaseConfig {
         // FirebaseApp에서 직접 credentials를 꺼내지 않고, 이미 생성된 credentials 빈을 사용합니다.
         return StorageOptions.newBuilder()
                 .setProjectId(firebaseApp.getOptions().getProjectId())
+                .setProjectId(projectId)
                 .setCredentials(credentials) // credentials 빈을 직접 사용
                 .build()
                 .getService();

@@ -11,6 +11,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile; // MultipartFile import 추가
+import java.util.Map; // Map import 추가 (JSON 응답용)
 
 @RestController
 @RequestMapping("/api/profile")
@@ -53,4 +55,46 @@ public class ProfileController {
         return ResponseEntity.ok(updatedProfile);
     }
 
+    // 프로필 이미지 업로드
+    @PostMapping("/upload-image")
+    @Operation(summary = "프로필 이미지 업로드", description = "새 프로필 이미지를 업로드하고 URL을 DB에 저장합니다.")
+    public ResponseEntity<Map<String, String>> uploadProfileImage(
+      @AuthenticationPrincipal CustomStudentDetails customStudentDetails,
+      // 파일 업로드 요청의 Body에서 'file'이라는 이름으로 MultipartFile을 받음
+      @RequestPart("file") MultipartFile file) {
+
+        Long studentId = customStudentDetails.getStudent().getStudentId();
+        log.info(">>>>> 프로필 이미지 업로드 API Call. Student ID: {}", studentId);
+
+        if (file.isEmpty()) {
+            return ResponseEntity.badRequest().body(Map.of("message", "업로드할 파일이 없습니다."));
+        }
+
+        // 서비스 호출: 파일 저장 및 DB URL 업데이트
+        String newImageUrl = profileService.uploadProfileImage(studentId, file);
+
+        log.info("<<<<< 프로필 이미지 업로드 성공! URL: {}", newImageUrl);
+        // 새로 저장된 이미지 URL을 JSON 형태로 반환
+        return ResponseEntity.ok(
+          Map.of("profileImgUrl", newImageUrl, "message", "프로필 이미지가 성공적으로 업로드되었습니다.")
+        );
+    }
+
+    // 프로필 이미지 삭제
+    @DeleteMapping("/delete-image")
+    @Operation(summary = "프로필 이미지 삭제", description = "현재 프로필 이미지 URL을 DB에서 제거(null)하여 기본 이미지로 돌아갑니다.")
+    public ResponseEntity<Map<String, String>> deleteProfileImage(
+      @AuthenticationPrincipal CustomStudentDetails customStudentDetails) {
+
+        Long studentId = customStudentDetails.getStudent().getStudentId();
+        log.info(">>>>> 프로필 이미지 삭제 API Call. Student ID: {}", studentId);
+
+        // 서비스 호출: DB의 URL 필드를 null로 업데이트
+        profileService.deleteProfileImage(studentId);
+
+        log.info("<<<<< 프로필 이미지 삭제 성공! Student ID: {}", studentId);
+        return ResponseEntity.ok(
+          Map.of("message", "프로필 이미지가 성공적으로 삭제(초기화)되었습니다.")
+        );
+    }
 }

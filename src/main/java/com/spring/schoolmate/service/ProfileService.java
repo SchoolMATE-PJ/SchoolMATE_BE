@@ -11,6 +11,7 @@ import com.spring.schoolmate.repository.StudentRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
 @Service
 @RequiredArgsConstructor
@@ -20,6 +21,7 @@ public class ProfileService {
     private final ProfileRepository profileRepository;
     private final StudentRepository studentRepository;
     private final AllergyService allergyService;
+    private final FirebaseStorageService storageService;
 
     /**
      * 프로필 정보를 저장
@@ -131,5 +133,46 @@ public class ProfileService {
 
         // 수정된 정보를 DTO로 변환하여 반환 (JPA의 더티 체킹에 의해 자동 저장됨)
         return MyProfileRes.fromEntity(profile);
+    }
+
+    // 프로필 이미지 업로드 및 DB 업데이트 메서드
+    // -----------------------------------------------------------
+    @Transactional
+    public String uploadProfileImage(Long studentId, MultipartFile file) {
+        // 1. 해당 학생의 프로필 정보 로드
+        Profile profile = profileRepository.findByStudentId(studentId)
+          .orElseThrow(() -> new IllegalArgumentException("사용자 프로필을 찾을 수 없습니다."));
+
+        // 2. 파일 스토리지에 업로드하고 URL 받기 (FirebaseStorageService 사용)
+        //    * 경로는 'profiles/{studentId}' 등으로 지정하는 것이 일반적입니다.
+        String imageUrl;
+        try {
+            imageUrl = storageService.uploadFile(file, "profiles/" + studentId);
+        } catch (Exception e) {
+            // 업로드 실패 시 예외 처리
+            throw new RuntimeException("이미지 업로드에 실패했습니다.", e);
+        }
+
+        // 3. Profile 엔티티의 profileImgUrl 업데이트
+        profile.updateProfileImageUrl(imageUrl);
+        // @Transactional 때문에 변경 사항이 자동 저장되지만, 명시적으로 저장할 수도 있습니다.
+        // profileRepository.save(profile);
+
+        return imageUrl; // 클라이언트에게 저장된 URL 반환
+    }
+
+    // -----------------------------------------------------------
+    // ⭐️ [신규] 프로필 이미지 URL 삭제 및 DB 업데이트 메서드
+    // -----------------------------------------------------------
+    @Transactional
+    public void deleteProfileImage(Long studentId) {
+        Profile profile = profileRepository.findByStudentId(studentId)
+          .orElseThrow(() -> new IllegalArgumentException("사용자 프로필을 찾을 수 없습니다."));
+
+        // 1. (선택) Firebase/S3에서 실제 파일도 삭제하는 로직 추가 가능
+        //    storageService.deleteFile(profile.getProfileImgUrl());
+
+        // 2. Profile 엔티티의 profileImgUrl을 null로 업데이트 (기본 이미지로 돌아감)
+        profile.updateProfileImageUrl(null);
     }
 }

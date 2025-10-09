@@ -109,6 +109,7 @@ app:
 # Firebase Configuration (Local)
 # ===================================================
 firebase:
+  project-id: schoolmate-e3eef
   # 로컬에서 실행하기 위한 서비스 계정 파일 경로
-  service-account-file: config/schoolmate-e3eef-firebase-adminsdk-fbsvc-460de930d8.json
+  service-account-file: config/schoolmate-e3eef-firebase-adminsdk-fbsvc-3f69d7a684.json
   storage-bucket: "schoolmate-e3eef.firebasestorage.app"

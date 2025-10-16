@@ -8,6 +8,8 @@ import com.spring.schoolmate.dto.external.ExternalAccountReq;
 import com.spring.schoolmate.repository.ProfileRepository;
 import com.spring.schoolmate.repository.StudentRepository;
 import com.spring.schoolmate.service.AuthService;
+import io.swagger.v3.oas.annotations.Operation; // Operation 어노테이션 추가
+import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpHeaders;
@@ -15,6 +17,11 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+/**
+ * 사용자 인증 및 회원가입 관련 컨트롤러.
+ * 일반 회원가입, 소셜 회원가입, 이메일/닉네임 중복 확인 기능을 제공합니다.
+ */
+@Tag(name = "Auth & Sign Up", description = "일반/소셜 회원가입, 이메일/닉네임/전화번호 중복 확인 API")
 @RestController
 @RequestMapping("/api/auth")
 @RequiredArgsConstructor
@@ -27,6 +34,10 @@ public class AuthController {
     /**
      * 일반 회원가입
      */
+    @Operation(
+      summary = "일반 회원가입 (이메일/비밀번호)",
+      description = "이메일, 비밀번호, 닉네임, 전화번호 등을 이용해 일반 계정으로 회원가입합니다."
+    )
     @PostMapping("/signup")
     public ResponseEntity<?> signUp(@RequestBody SignUpReq request) {
         // AuthService에 회원가입 처리를 위임하고, 결과를 반환받습니다.
@@ -36,11 +47,11 @@ public class AuthController {
 
     /**
      * 외부 계정(소셜)으로 시작하여, 추가 정보를 받아 최종 회원가입을 처리하는 API입니다.
-     * @param request 카카오 정보를 포함하여 사용자가 최종 입력한 정보가 담긴 DTO
      */
-    /**
-     * 외부 계정(소셜)으로 시작하여, 추가 정보를 받아 최종 회원가입을 처리하는 API입니다.
-     */
+    @Operation(
+      summary = "소셜(External) 계정 최종 회원가입",
+      description = "카카오 등 외부 인증 후 발급받은 임시 토큰(tempToken)과 추가 정보를 이용해 회원가입을 완료합니다. 성공 시 최종 인증 JWT가 반환됩니다."
+    )
     @PostMapping("/signup/social")
     public ResponseEntity<?> externalSignUp(@RequestBody ExternalSignUpReq request) {
         try {
@@ -62,6 +73,10 @@ public class AuthController {
     }
 
     // 이메일 중복 확인 API
+    @Operation(
+      summary = "이메일 중복 확인",
+      description = "회원가입 전, 입력한 이메일이 이미 사용 중인지 확인합니다. 중복 시 409 Conflict를 반환합니다."
+    )
     @GetMapping("/check-email")
     public ResponseEntity<?> checkEmail(@RequestParam String email) {
         if (authService.existCheckEmail(email)) {
@@ -73,6 +88,10 @@ public class AuthController {
     }
 
     // 닉네임 중복 확인 API
+    @Operation(
+      summary = "닉네임 중복 확인",
+      description = "회원가입 전, 입력한 닉네임이 이미 사용 중인지 확인합니다. 중복 시 409 Conflict를 반환합니다."
+    )
     @GetMapping("/check-nickname")
     public ResponseEntity<?> checkNickname(@RequestParam String nickname) {
         if (authService.existCheckNickname(nickname)) {
@@ -82,6 +101,10 @@ public class AuthController {
     }
 
     // 전화번호 중복 확인 API
+    @Operation(
+      summary = "전화번호 중복 확인",
+      description = "회원가입 전, 입력한 전화번호가 이미 등록된 번호인지 확인합니다. 중복 시 409 Conflict를 반환합니다."
+    )
     @GetMapping("/check-phone")
     public ResponseEntity<?> checkPhone(@RequestParam String phone) {
         if (authService.existCheckPhone(phone)) {

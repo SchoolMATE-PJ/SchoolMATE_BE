@@ -1,12 +1,12 @@
-// AttendController.java (새로운 파일)
-
 package com.spring.schoolmate.controller;
 
 import com.spring.schoolmate.dto.pointhistory.PointHistoryRes;
 import com.spring.schoolmate.entity.PointHistory;
 import com.spring.schoolmate.service.PointHistoryService;
 import com.spring.schoolmate.exception.NotFoundException;
-import com.spring.schoolmate.service.StudentService; // StudentService 필요하다고 가정
+import com.spring.schoolmate.service.StudentService;
+import io.swagger.v3.oas.annotations.Operation; // Operation 어노테이션 추가
+import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -15,15 +15,19 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 import java.util.NoSuchElementException;
-import java.util.stream.Collectors;
 
+/**
+ * 학생 출석 관리 컨트롤러.
+ * 출석 체크(포인트 지급) 및 출석 일수/날짜 조회 기능을 제공합니다.
+ */
+@Tag(name = "Attendance", description = "학생 출석 체크(포인트 지급) 및 출석 기록 조회 API")
 @RestController
 @RequestMapping("/api/attend") // 기본 경로를 /api/attend로 설정
 @RequiredArgsConstructor
 public class AttendController {
 
   private final PointHistoryService pointHistoryService;
-  private final StudentService studentService; // 학생 ID 조회를 위해 필요하다고 가정
+  private final StudentService studentService;
 
   /**
    * 로그인된 학생의 오늘 출석을 체크하고 500 포인트를 지급합니다.
@@ -31,7 +35,11 @@ public class AttendController {
    * @param authentication Spring Security의 인증 정보
    * @return 지급된 포인트 내역(PointHistoryRes) DTO
    */
-  @PostMapping("/student/me/check") // 💡 출석체크 엔드포인트 수정
+  @Operation(
+    summary = "오늘의 출석 체크 및 포인트 지급",
+    description = "로그인한 학생의 오늘 출석을 기록하고 정해진 포인트(예: 500P)를 지급합니다. 하루에 한 번만 가능합니다."
+  )
+  @PostMapping("/student/me/check")
   public ResponseEntity<PointHistoryRes> checkAttendance(Authentication authentication) {
     if (authentication == null || !authentication.isAuthenticated()) {
       return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build(); // 401
@@ -58,7 +66,11 @@ public class AttendController {
    * @param authentication Spring Security의 인증 정보
    * @return 누적 출석 일수 (Integer)
    */
-  @GetMapping("/student/me/count") // 💡 출석 일수 카운트 엔드포인트 수정
+  @Operation(
+    summary = "전체 누적 출석 일수 조회",
+    description = "로그인한 학생의 서비스 이용 기간 동안의 총 출석 횟수를 조회합니다."
+  )
+  @GetMapping("/student/me/count")
   public ResponseEntity<Integer> getAttendanceCount(Authentication authentication) {
     if (authentication == null || !authentication.isAuthenticated()) {
       return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
@@ -81,7 +93,11 @@ public class AttendController {
    * @param month 조회할 월
    * @return 해당 월에 출석한 날짜 문자열 리스트 (예: ["2025-09-01", "2025-09-02", ...])
    */
-  @GetMapping("/student/me/dates") // 💡 월별 날짜 조회 엔드포인트 수정
+  @Operation(
+    summary = "특정 월의 출석 날짜 리스트 조회",
+    description = "로그인한 학생이 지정된 연도(year)와 월(month)에 출석한 날짜(YYYY-MM-DD 형식) 리스트를 조회합니다. 주로 달력 표시용으로 사용됩니다."
+  )
+  @GetMapping("/student/me/dates")
   public ResponseEntity<List<String>> getAttendanceDatesByMonth(
     Authentication authentication,
     @RequestParam int year,

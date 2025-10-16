@@ -76,6 +76,7 @@ public class SecurityConfig {
         // 4. URL별 접근 권한 설정
         http.authorizeHttpRequests(auth -> auth
           .requestMatchers(
+            "/api/auth/login",
             "/api/auth/**",
             "/oauth2/**",
             "/login/oauth2/code/**",
@@ -85,7 +86,9 @@ public class SecurityConfig {
             "/api/auth/signup/social",
             "/api/school-search/**",
             "/api/students/**",
-            "/api/profile/**"
+            "/api/profile/**",
+            "/swagger-ui/**",
+            "/v3/api-docs/**", "/api-docs/**", "/swagger-ui.html"
           ).permitAll()
           .requestMatchers("/admin").hasRole("ADMIN")
           .anyRequest().authenticated());

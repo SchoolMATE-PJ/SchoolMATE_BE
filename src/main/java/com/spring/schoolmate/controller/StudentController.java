@@ -5,7 +5,7 @@ import com.spring.schoolmate.dto.student.StudentRes;
 import com.spring.schoolmate.entity.Student;
 import com.spring.schoolmate.security.CustomStudentDetails;
 import com.spring.schoolmate.service.StudentService;
-import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Operation; // Operation import 확인
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -19,6 +19,10 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.NoSuchElementException;
 
+/**
+ * 학생(사용자) 계정 및 프로필 관련 컨트롤러.
+ * 사용자 정보 조회, 비밀번호 변경, 회원 탈퇴 기능을 제공합니다.
+ */
 @RestController
 @RequestMapping("/api/students")
 @RequiredArgsConstructor
@@ -29,6 +33,7 @@ public class StudentController {
   private final StudentService studentService;
 
   @GetMapping("/me")
+  @Operation(summary = "내 계정 기본 정보 조회", description = "로그인한 학생의 기본 계정 정보를 조회합니다. (이메일, 권한 등)")
   public ResponseEntity<StudentRes> getMyInfo(Authentication authentication) {
 
     log.info(">>>>>> [StudentController /me] 요청 시작"); // 진입점 로그 추가
@@ -59,33 +64,34 @@ public class StudentController {
       return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
     }
   }
-    @PutMapping("/password")
-    @Operation(summary = "비밀번호 변경", description = "로그인한 사용자의 비밀번호를 변경합니다.")
-    public ResponseEntity<Map<String, String>> updatePassword( // 1. 반환 타입을 Map으로 변경
-                                                               @AuthenticationPrincipal CustomStudentDetails customStudentDetails,
-                                                               @RequestBody PasswordUpdateReq request) {
 
-        log.info("password 변경 Controller 실행 >>>");
-        Long currentStudentId = customStudentDetails.getStudent().getStudentId();
-        studentService.updatePassword(currentStudentId, request);
+  @PutMapping("/password")
+  @Operation(summary = "비밀번호 변경", description = "로그인한 사용자의 비밀번호를 변경합니다.")
+  public ResponseEntity<Map<String, String>> updatePassword( // 1. 반환 타입을 Map으로 변경
+                                                             @AuthenticationPrincipal CustomStudentDetails customStudentDetails,
+                                                             @RequestBody PasswordUpdateReq request) {
 
-        // 2. Map을 사용해 JSON 객체를 생성
-        Map<String, String> response = new HashMap<>();
-        response.put("message", "비밀번호가 성공적으로 변경되었습니다.");
+    log.info("password 변경 Controller 실행 >>>");
+    Long currentStudentId = customStudentDetails.getStudent().getStudentId();
+    studentService.updatePassword(currentStudentId, request);
 
-        // 3. 생성된 Map 객체를 반환
-        return ResponseEntity.ok(response);
-    }
+    // 2. Map을 사용해 JSON 객체를 생성
+    Map<String, String> response = new HashMap<>();
+    response.put("message", "비밀번호가 성공적으로 변경되었습니다.");
 
-    @DeleteMapping("/me")
-    @Operation(summary = "회원 탈퇴", description = "로그인한 사용자 본인의 계정을 삭제합니다.")
-    public ResponseEntity<String> deleteMyAccount(
-            @AuthenticationPrincipal CustomStudentDetails customStudentDetails) {
+    // 3. 생성된 Map 객체를 반환
+    return ResponseEntity.ok(response);
+  }
 
-        Long currentStudentId = customStudentDetails.getStudent().getStudentId();
-        studentService.deleteStudent(currentStudentId);
+  @DeleteMapping("/me")
+  @Operation(summary = "회원 탈퇴", description = "로그인한 사용자 본인의 계정을 삭제합니다. (하드 삭제)")
+  public ResponseEntity<String> deleteMyAccount(
+    @AuthenticationPrincipal CustomStudentDetails customStudentDetails) {
 
-        return ResponseEntity.ok("회원 탈퇴가 성공적으로 처리되었습니다.");
-    }
+    Long currentStudentId = customStudentDetails.getStudent().getStudentId();
+    studentService.deleteStudent(currentStudentId);
+
+    return ResponseEntity.ok("회원 탈퇴가 성공적으로 처리되었습니다.");
+  }
 
 }

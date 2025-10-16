@@ -1,19 +1,20 @@
 package com.spring.schoolmate.controller;
 
 import com.spring.schoolmate.dto.profile.MyProfileRes;
-import com.spring.schoolmate.dto.profile.ProfileRes;
 import com.spring.schoolmate.dto.profile.ProfileUpdateReq;
 import com.spring.schoolmate.security.CustomStudentDetails;
 import com.spring.schoolmate.service.ProfileService;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.web.multipart.MultipartFile; // MultipartFile import 추가
-import java.util.Map; // Map import 추가 (JSON 응답용)
+import org.springframework.web.multipart.MultipartFile;
+import java.util.Map;
 
+@Tag(name = "프로필 (Profile)", description = "사용자 프로필 정보 조회 및 수정 API")
 @RestController
 @RequestMapping("/api/profile")
 @RequiredArgsConstructor
@@ -25,7 +26,7 @@ public class ProfileController {
     @GetMapping("/me")
     @Operation(summary = "내 프로필 정보 조회", description = "로그인한 사용자의 프로필 정보를 조회합니다.")
     public ResponseEntity<MyProfileRes> getMyProfile(
-            @AuthenticationPrincipal CustomStudentDetails customStudentDetails) {
+      @AuthenticationPrincipal CustomStudentDetails customStudentDetails) {
 
         log.info(">>>>> 프로필 정보 조회 API Call");
         Long currentStudentId = customStudentDetails.getStudent().getStudentId();
@@ -41,8 +42,8 @@ public class ProfileController {
     @PutMapping("/me")
     @Operation(summary = "내 프로필 정보 수정", description = "로그인한 사용자의 프로필 정보를 수정합니다.")
     public ResponseEntity<MyProfileRes> updateMyProfile(
-            @AuthenticationPrincipal CustomStudentDetails customStudentDetails,
-            @RequestBody ProfileUpdateReq request) {
+      @AuthenticationPrincipal CustomStudentDetails customStudentDetails,
+      @RequestBody ProfileUpdateReq request) {
 
         log.info(">>>>> 프로필 정보 수정 API Call");
         // 현재 로그인한 사용자의 ID를 가져옵니다.

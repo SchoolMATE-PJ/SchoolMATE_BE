@@ -4,6 +4,8 @@ import com.spring.schoolmate.entity.ProductExchange;
 import com.spring.schoolmate.exception.NotFoundException;
 import com.spring.schoolmate.security.CustomStudentDetails;
 import com.spring.schoolmate.service.ProductExchangeService;
+import io.swagger.v3.oas.annotations.Operation; // Operation 어노테이션 추가
+import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -14,8 +16,13 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
-import java.util.NoSuchElementException; // 추가
+import java.util.NoSuchElementException;
 
+/**
+ * 상품 교환 및 관리 관련 컨트롤러.
+ * 포인트 상품 교환 요청, 사용 완료 처리, 교환 내역 조회 기능을 제공합니다.
+ */
+@Tag(name = "Product Exchange", description = "포인트 상품 교환 및 내역 관리 API")
 @RestController
 @RequestMapping("/api/exchanges")
 @RequiredArgsConstructor
@@ -30,6 +37,10 @@ public class ProductExchangeController {
    * @param authentication 현재 로그인한 사용자 정보 (Student ID 획득용)
    * @return 교환 완료된 ProductExchange 객체
    */
+  @Operation(
+    summary = "상품 교환 요청 (포인트 사용)",
+    description = "로그인된 학생이 특정 상품 ID에 대해 포인트를 사용하고 교환을 요청합니다. 포인트가 차감되며, 재고 및 포인트 부족 시 오류를 반환합니다. [권한: STUDENT]"
+  )
   @PreAuthorize("hasAuthority('STUDENT')")
   @PostMapping("/{productId}")
   public ResponseEntity<?> exchangeProduct(
@@ -64,6 +75,10 @@ public class ProductExchangeController {
    * @param productExchangeId 상태를 변경할 ProductExchange의 ID
    * @return 업데이트된 ProductExchange 객체
    */
+  @Operation(
+    summary = "교환 상품 사용 완료 처리",
+    description = "학생이 교환한 상품(쿠폰 등)을 사용한 후, 해당 교환 내역 ID의 상태를 '사용 완료'로 변경합니다. [권한: STUDENT]"
+  )
   @PreAuthorize("hasAuthority('STUDENT')")
   @PutMapping("/{productExchangeId}/use")
   public ResponseEntity<?> useProduct(@PathVariable Integer productExchangeId) {
@@ -84,6 +99,10 @@ public class ProductExchangeController {
    * @param authentication 현재 로그인한 사용자 정보 (Student ID 획득용)
    * @return 페이징 처리된 교환 상품 목록
    */
+  @Operation(
+    summary = "본인(학생)의 상품 교환 내역 조회 (페이지네이션)",
+    description = "로그인된 학생이 과거에 교환한 상품 목록을 최신순으로 페이지네이션하여 조회합니다. [권한: STUDENT]"
+  )
   @PreAuthorize("hasAuthority('STUDENT')")
   @GetMapping("/my-exchanges")
   public ResponseEntity<Page<ProductExchange>> getMyExchangedProducts(
